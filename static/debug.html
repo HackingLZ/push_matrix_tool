@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Demo · Debug</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0f172a; --card:#0b1224; --text:#e2e8f0; --muted:#94a3b8; --accent:#22d3ee; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Space Grotesk','Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    .wrap { max-width:1000px; margin:0 auto; padding:48px 22px 72px; display:grid; gap:20px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    h1 { margin:0; font-size:30px; letter-spacing:-.3px; }
+    h3 { margin:0 0 12px 0; font-size:16px; color:var(--text); }
+    .card { background:var(--card); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
+    .grid { display:grid; gap:14px; }
+    .two { grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
+    button { background:linear-gradient(135deg,#22d3ee,#818cf8); color:#0b1224; border:none; padding:10px 14px; border-radius:10px; font-weight:700; cursor:pointer; transition:transform 120ms ease; font-size:13px; }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:#1f2937; color:var(--text); box-shadow:none; }
+    .muted { color:var(--muted); }
+    code { background:rgba(255,255,255,0.08); padding:4px 6px; border-radius:6px; font-size:13px; }
+    .tag { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.06); color:var(--muted); font-size:13px; }
+    .status { padding:8px 12px; border-radius:8px; margin:6px 0; font-size:13px; background:rgba(255,255,255,0.04); }
+    .status.success { background:rgba(34,197,94,0.15); color:#4ade80; }
+    .status.error { background:rgba(239,68,68,0.15); color:#f87171; }
+    .status.warn { background:rgba(234,179,8,0.15); color:#facc15; }
+    #log { background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); color:#cbd5e1; padding:12px; border-radius:10px; min-height:120px; max-height:240px; overflow-y:auto; font-family:ui-monospace,monospace; font-size:12px; }
+    #sub { background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); color:#cbd5e1; padding:12px; border-radius:10px; font-family:ui-monospace,monospace; font-size:11px; white-space:pre-wrap; word-break:break-all; max-height:200px; overflow-y:auto; }
+    .btn-group { display:flex; gap:8px; flex-wrap:wrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Push Demo · Debug</h1>
+        <div class="tag">Origin: <code id="origin"></code></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="secondary" onclick="location.href='/register'">Register</button>
+        <button class="secondary" onclick="location.href='/dashboard'">Dashboard</button>
+        <button class="secondary" onclick="location.href='/templates'">Templates</button>
+        <button class="secondary" onclick="location.href='/admin'">Admin</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="tag">Public VAPID: <code>{{ public_key }}</code></div>
+    </div>
+
+    <div class="grid two">
+      <div class="card grid">
+        <h3>Environment</h3>
+        <div class="btn-group">
+          <button onclick="checkEnv()">Check support</button>
+        </div>
+        <div id="env"></div>
+      </div>
+
+      <div class="card grid">
+        <h3>Service Worker</h3>
+        <div class="btn-group">
+          <button onclick="checkSW()">Check worker</button>
+          <button class="secondary" onclick="unregisterAll()">Unregister all</button>
+        </div>
+        <div id="sw"></div>
+      </div>
+    </div>
+
+    <div class="card grid">
+      <h3>Subscription</h3>
+      <div class="btn-group">
+        <button onclick="fetchSubscription()">Show current</button>
+        <button onclick="triggerSubscribe()">Subscribe</button>
+        <button class="secondary" onclick="unsubscribe()">Unsubscribe</button>
+      </div>
+      <div id="sub">None yet.</div>
+    </div>
+
+    <div class="card grid">
+      <h3>Notifications</h3>
+      <div class="btn-group">
+        <button onclick="testLocal()">Local notification</button>
+        <button onclick="simulatePush()">Simulate push</button>
+      </div>
+    </div>
+
+    <div class="card grid">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="margin:0;">Log</h3>
+        <button class="secondary" onclick="clearLog()">Clear</button>
+      </div>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    const publicKey = "{{ public_key }}";
+    document.getElementById("origin").textContent = location.origin;
+
+    function log(msg) {
+      const el = document.getElementById("log");
+      const div = document.createElement("div");
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      el.prepend(div);
+    }
+    function clearLog() { document.getElementById("log").innerHTML = ""; }
+
+    function b64ToUint8(base64String) {
+      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+      return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    }
+
+    async function triggerSubscribe() {
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+        return log("Notifications not supported here");
+      }
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") return log("Permission denied");
+        const reg = await navigator.serviceWorker.register("/sw.js");
+        await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToUint8(publicKey) });
+        await fetch("/api/subscribe", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ subscription: sub.toJSON() }) });
+        log("Subscribed and stored");
+      } catch (err) {
+        log(`Subscribe error: ${err.message}`);
+      }
+    }
+
+    async function fetchSubscription() {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) return log("No service worker");
+      const sub = await reg.pushManager.getSubscription();
+      document.getElementById("sub").textContent = sub ? JSON.stringify(sub.toJSON(), null, 2) : "None";
+    }
+
+    async function unsubscribe() {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg && await reg.pushManager.getSubscription();
+      if (sub) { await sub.unsubscribe(); log("Unsubscribed"); } else { log("No subscription"); }
+    }
+
+    async function checkEnv() {
+      const lines = [];
+      const isSecure = location.protocol === "https:" || location.hostname === "localhost";
+      lines.push({ text: `Secure context: ${isSecure}`, ok: isSecure });
+      const hasSW = "serviceWorker" in navigator;
+      lines.push({ text: `Service worker: ${hasSW}`, ok: hasSW });
+      const hasPush = "PushManager" in window;
+      lines.push({ text: `Push API: ${hasPush}`, ok: hasPush });
+      const hasNotif = "Notification" in window;
+      const perm = hasNotif ? Notification.permission : "unsupported";
+      lines.push({ text: `Notification: ${hasNotif} (${perm})`, ok: hasNotif && perm === "granted", warn: perm === "default" });
+      document.getElementById("env").innerHTML = lines.map(l =>
+        `<div class="status ${l.ok ? 'success' : (l.warn ? 'warn' : 'error')}">${l.text}</div>`
+      ).join("");
+      log("Environment checked");
+    }
+
+    async function checkSW() {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      if (regs.length === 0) {
+        document.getElementById("sw").innerHTML = '<div class="status warn">No registrations</div>';
+      } else {
+        document.getElementById("sw").innerHTML = regs.map(r => `<div class="status success">${r.scope}</div>`).join("");
+      }
+    }
+
+    async function unregisterAll() {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister();
+      log("Cleared all service workers");
+      document.getElementById("sw").innerHTML = '<div class="status warn">No registrations</div>';
+    }
+
+    function testLocal() {
+      if (Notification.permission !== "granted") return log("Permission not granted");
+      new Notification("Local test", { body:"This is a local notification" });
+      log("Local notification shown");
+    }
+
+    async function simulatePush() {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg || !reg.active) return log("No active service worker");
+      reg.active.postMessage({ type:"simulate-push", payload:{ title:"Simulated push", body:"Hello from debug page", url:"/" }});
+      log("Sent simulate message");
+    }
+
+    navigator.serviceWorker.addEventListener("message", (evt) => {
+      if (evt.data?.type === "push-received") log(`Push received: ${evt.data.data.title}`);
+    });
+
+    // Auto-check on load
+    checkEnv();
+    checkSW();
+  </script>
+</body>
+</html>

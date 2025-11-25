@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Demo · Templates</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0f172a; --card:#0b1224; --text:#e2e8f0; --muted:#94a3b8; --accent:#22d3ee; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Space Grotesk','Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    .wrap { max-width:1200px; margin:0 auto; padding:48px 22px 72px; display:grid; gap:20px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    h1 { margin:0; font-size:30px; letter-spacing:-.3px; }
+    h3 { margin:0 0 12px 0; font-size:16px; color:var(--text); }
+    .card { background:var(--card); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
+    .grid { display:grid; gap:14px; }
+    .two { grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); }
+    .three { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
+    label { color:var(--muted); font-size:14px; margin-bottom:4px; display:block; }
+    input, textarea, select { width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); color:var(--text); font-size:15px; font-family:inherit; }
+    input:focus, textarea:focus, select:focus { outline:none; border-color:var(--accent); }
+    button { background:linear-gradient(135deg,#22d3ee,#818cf8); color:#0b1224; border:none; padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; transition:transform 120ms ease; font-family:inherit; }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:#1f2937; color:var(--text); box-shadow:none; }
+    button.danger { background:linear-gradient(135deg,#ef4444,#dc2626); }
+    button.sm { padding:8px 12px; font-size:13px; border-radius:8px; }
+    .muted { color:var(--muted); }
+    code { background:rgba(255,255,255,0.08); padding:4px 6px; border-radius:6px; font-size:13px; }
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:6px; font-size:12px; background:rgba(255,255,255,0.06); }
+    .form-group { display:grid; gap:6px; }
+    .checkbox-group { display:flex; align-items:center; gap:10px; }
+    .checkbox-group input { width:auto; }
+    .btn-group { display:flex; gap:10px; flex-wrap:wrap; }
+    .divider { border-top:1px solid rgba(255,255,255,0.06); margin:10px 0; }
+
+    .template-card { background:var(--card); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px; transition:border-color 0.2s; }
+    .template-card:hover { border-color:rgba(255,255,255,0.15); }
+    .template-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
+    .template-name { font-weight:600; font-size:15px; }
+    .template-category { font-size:11px; padding:3px 8px; border-radius:4px; background:rgba(34,211,238,0.15); color:var(--accent); }
+    .template-title { font-size:14px; margin-bottom:4px; }
+    .template-body { font-size:12px; color:var(--muted); margin-bottom:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .template-icons { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .template-icon { width:24px; height:24px; border-radius:4px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:10px; }
+    .template-icon img { width:20px; height:20px; object-fit:contain; }
+    .template-actions { display:flex; gap:6px; }
+
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:1000; opacity:0; visibility:hidden; transition:opacity 0.2s, visibility 0.2s; }
+    .modal-overlay.active { opacity:1; visibility:visible; }
+    .modal { background:var(--card); border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:24px; width:90%; max-width:700px; max-height:90vh; overflow-y:auto; }
+    .modal h2 { margin:0 0 20px 0; font-size:22px; }
+
+    .tabs { display:flex; gap:4px; margin-bottom:16px; background:rgba(255,255,255,0.04); padding:4px; border-radius:10px; }
+    .tab { padding:10px 16px; border-radius:8px; cursor:pointer; font-size:14px; color:var(--muted); transition:all 0.2s; }
+    .tab:hover { color:var(--text); }
+    .tab.active { background:rgba(255,255,255,0.1); color:var(--text); }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    .icon-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+    .icon-input { display:grid; gap:4px; }
+    .icon-input label { font-size:12px; display:flex; align-items:center; gap:6px; }
+    .icon-input label img { width:16px; height:16px; }
+    .icon-preview { width:32px; height:32px; border-radius:6px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; margin-top:4px; }
+    .icon-preview img { max-width:28px; max-height:28px; object-fit:contain; }
+
+    .color-row { display:flex; gap:10px; align-items:center; }
+    .color-row input[type="color"] { width:50px; height:40px; padding:2px; border-radius:8px; cursor:pointer; }
+    .color-row input[type="text"] { flex:1; }
+
+    .preview-notification { background:#1a1a2e; border-radius:12px; padding:16px; display:flex; gap:12px; align-items:flex-start; }
+    .preview-icon { width:48px; height:48px; border-radius:10px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .preview-icon img { max-width:40px; max-height:40px; object-fit:contain; }
+    .preview-content { flex:1; min-width:0; }
+    .preview-title { font-weight:600; font-size:14px; margin-bottom:2px; }
+    .preview-body { font-size:13px; color:var(--muted); }
+    .preview-origin { font-size:11px; color:#64748b; margin-top:4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Push Demo · Templates</h1>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="secondary" onclick="location.href='/register'">Register</button>
+        <button class="secondary" onclick="location.href='/dashboard'">Dashboard</button>
+        <button class="secondary" onclick="location.href='/debug'">Debug</button>
+        <button class="secondary" onclick="location.href='/admin'">Admin</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h3 style="margin:0;">Notification Templates</h3>
+          <p class="muted" style="margin:4px 0 0 0;">Create and manage custom notification templates with OS-specific icons and themes.</p>
+        </div>
+        <button onclick="openModal()">New Template</button>
+      </div>
+    </div>
+
+    <div class="grid three" id="templates-grid">
+      <!-- Templates will be loaded here -->
+    </div>
+
+    <div class="card">
+      <h3>Built-in Templates</h3>
+      <p class="muted" style="margin:0 0 12px 0;">These templates are always available in the dashboard. Create custom templates above to add your own.</p>
+      <div class="grid three" id="builtin-templates">
+        <!-- Built-in templates preview -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Template Editor Modal -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h2 id="modal-title">New Template</h2>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="basic">Basic</div>
+        <div class="tab" data-tab="icons">Icons</div>
+        <div class="tab" data-tab="appearance">Appearance</div>
+        <div class="tab" data-tab="preview">Preview</div>
+      </div>
+
+      <form id="template-form" onsubmit="saveTemplate(event)">
+        <input type="hidden" id="template-id" value="">
+
+        <!-- Basic Tab -->
+        <div class="tab-content active" data-tab="basic">
+          <div class="grid">
+            <div class="grid two">
+              <div class="form-group">
+                <label for="tpl-name">Template Name *</label>
+                <input type="text" id="tpl-name" required placeholder="My Custom Template">
+              </div>
+              <div class="form-group">
+                <label for="tpl-category">Category</label>
+                <select id="tpl-category">
+                  <option value="Custom">Custom</option>
+                  <option value="Software Updates">Software Updates</option>
+                  <option value="Security Alerts">Security Alerts</option>
+                  <option value="Password & Account">Password & Account</option>
+                  <option value="Session & Access">Session & Access</option>
+                  <option value="Storage & Quota">Storage & Quota</option>
+                  <option value="Subscription & Billing">Subscription & Billing</option>
+                  <option value="Collaboration">Collaboration</option>
+                  <option value="System Status">System Status</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="tpl-title">Notification Title *</label>
+              <input type="text" id="tpl-title" required placeholder="Update Available">
+            </div>
+            <div class="form-group">
+              <label for="tpl-body">Notification Body</label>
+              <textarea id="tpl-body" rows="3" placeholder="A new version is ready to install."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="tpl-url">Click URL</label>
+              <input type="url" id="tpl-url" placeholder="https://example.com/update">
+            </div>
+            <div class="form-group">
+              <label for="tpl-tag">Tag (for grouping)</label>
+              <input type="text" id="tpl-tag" placeholder="updates">
+              <span class="muted" style="font-size:11px;">Notifications with the same tag replace each other</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Icons Tab -->
+        <div class="tab-content" data-tab="icons">
+          <div class="grid">
+            <div class="form-group">
+              <label for="tpl-icon-default">Default Icon URL</label>
+              <input type="url" id="tpl-icon-default" placeholder="https://example.com/icon.png" oninput="updateIconPreview('default')">
+              <span class="muted" style="font-size:11px;">Used when no OS-specific icon is set. Leave empty for system default.</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <p class="muted" style="margin:0;">OS-Specific Icons (optional - override default for each platform)</p>
+
+            <div class="icon-grid">
+              <div class="icon-input">
+                <label><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2300A4EF' d='M0 0h11.5v11.5H0zm12.5 0H24v11.5H12.5zM0 12.5h11.5V24H0zm12.5 0H24V24H12.5z'/%3E%3C/svg%3E" alt=""> Windows</label>
+                <input type="url" id="tpl-icon-windows" placeholder="Windows icon URL" oninput="updateIconPreview('windows')">
+                <div class="icon-preview" id="preview-windows"></div>
+              </div>
+              <div class="icon-input">
+                <label><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23999' d='M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z'/%3E%3C/svg%3E" alt=""> macOS</label>
+                <input type="url" id="tpl-icon-macos" placeholder="macOS icon URL" oninput="updateIconPreview('macos')">
+                <div class="icon-preview" id="preview-macos"></div>
+              </div>
+              <div class="icon-input">
+                <label><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23FCC624' d='M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489.117.779.39 1.53.8 2.204.273.448.594.859.954 1.228.617.632 1.346 1.155 2.158 1.537.55.259 1.132.456 1.734.579.673.137 1.37.2 2.068.186.684-.013 1.366-.098 2.03-.257.612-.146 1.205-.356 1.765-.633.584-.288 1.133-.641 1.627-1.059.485-.41.914-.88 1.274-1.4.347-.502.619-1.05.81-1.631.192-.586.303-1.197.329-1.814.025-.621-.035-1.246-.18-1.853-.143-.596-.367-1.17-.661-1.704-.375-.681-.866-1.28-1.426-1.775-.567-.498-1.214-.888-1.911-1.153-.696-.265-1.439-.4-2.186-.4-.428 0-.857.042-1.277.127-.387.078-.767.191-1.132.34-.3.122-.593.264-.873.426-.217.125-.426.262-.625.41.066-.166.127-.337.18-.511.105-.343.18-.697.223-1.057.038-.316.046-.637.023-.956-.023-.32-.078-.638-.164-.947-.089-.318-.21-.627-.36-.921-.217-.423-.502-.807-.842-1.137-.429-.418-.938-.74-1.497-.95-.534-.2-1.107-.3-1.682-.301zm.017 1.439c.588.002 1.17.177 1.667.504.497.327.887.797 1.115 1.346.229.55.29 1.157.173 1.74-.116.582-.409 1.115-.837 1.527-.428.413-.97.687-1.551.787-.581.1-1.179.024-1.712-.218-.534-.242-.977-.647-1.267-1.16-.29-.513-.412-1.108-.35-1.697.062-.588.298-1.143.679-1.588.38-.445.88-.761 1.432-.906.277-.073.563-.11.851-.107v-.228z'/%3E%3C/svg%3E" alt=""> Linux</label>
+                <input type="url" id="tpl-icon-linux" placeholder="Linux icon URL" oninput="updateIconPreview('linux')">
+                <div class="icon-preview" id="preview-linux"></div>
+              </div>
+              <div class="icon-input">
+                <label><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%233DDC84' d='M17.523 15.341c-.5 0-.909.41-.909.91s.41.909.91.909.909-.41.909-.91-.41-.909-.91-.909zm-11.046 0c-.5 0-.91.41-.91.91s.41.909.91.909.91-.41.91-.91-.41-.909-.91-.909zm11.408-5.594l1.972-3.416c.11-.19.045-.434-.145-.544-.19-.11-.434-.045-.544.145l-1.996 3.458c-1.547-.707-3.282-1.1-5.172-1.1-1.89 0-3.625.393-5.172 1.1L4.832 5.932c-.11-.19-.354-.255-.544-.145-.19.11-.255.354-.145.544l1.972 3.416C2.534 11.517.46 14.89.46 18.72h23.08c0-3.83-2.074-7.203-5.655-8.973zM6.477 15.34c-.5 0-.91.41-.91.91s.41.909.91.909.91-.41.91-.91-.41-.909-.91-.909z'/%3E%3C/svg%3E" alt=""> Android</label>
+                <input type="url" id="tpl-icon-android" placeholder="Android icon URL" oninput="updateIconPreview('android')">
+                <div class="icon-preview" id="preview-android"></div>
+              </div>
+              <div class="icon-input">
+                <label><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23999' d='M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z'/%3E%3C/svg%3E" alt=""> iOS</label>
+                <input type="url" id="tpl-icon-ios" placeholder="iOS icon URL" oninput="updateIconPreview('ios')">
+                <div class="icon-preview" id="preview-ios"></div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="form-group">
+              <label for="tpl-badge">Badge Icon URL</label>
+              <input type="url" id="tpl-badge" placeholder="https://example.com/badge.png">
+              <span class="muted" style="font-size:11px;">Small monochrome icon shown in notification tray (Android)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Appearance Tab -->
+        <div class="tab-content" data-tab="appearance">
+          <div class="grid">
+            <div class="form-group">
+              <label>Accent Color</label>
+              <div class="color-row">
+                <input type="color" id="tpl-color-accent-picker" value="#22d3ee" oninput="syncColor('accent')">
+                <input type="text" id="tpl-color-accent" placeholder="#22d3ee" oninput="syncColorFromText('accent')">
+              </div>
+              <span class="muted" style="font-size:11px;">Used for action buttons and highlights (Android/Windows)</span>
+            </div>
+
+            <div class="form-group">
+              <label>Background Color</label>
+              <div class="color-row">
+                <input type="color" id="tpl-color-bg-picker" value="#1a1a2e" oninput="syncColor('bg')">
+                <input type="text" id="tpl-color-bg" placeholder="#1a1a2e" oninput="syncColorFromText('bg')">
+              </div>
+              <span class="muted" style="font-size:11px;">Notification background color (limited support)</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="form-group">
+              <div class="checkbox-group">
+                <input type="checkbox" id="tpl-require-interaction">
+                <label for="tpl-require-interaction" style="margin:0;">Require Interaction</label>
+              </div>
+              <span class="muted" style="font-size:11px;">Keep notification visible until user interacts with it</span>
+            </div>
+
+            <div class="form-group">
+              <div class="checkbox-group">
+                <input type="checkbox" id="tpl-silent">
+                <label for="tpl-silent" style="margin:0;">Silent Notification</label>
+              </div>
+              <span class="muted" style="font-size:11px;">Show without sound or vibration</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview Tab -->
+        <div class="tab-content" data-tab="preview">
+          <div class="grid">
+            <div class="form-group">
+              <label>Preview OS</label>
+              <select id="preview-os" onchange="updatePreview()">
+                <option value="default">Default</option>
+                <option value="windows">Windows</option>
+                <option value="macos">macOS</option>
+                <option value="linux">Linux</option>
+                <option value="android">Android</option>
+                <option value="ios">iOS</option>
+              </select>
+            </div>
+
+            <div class="preview-notification" id="notification-preview">
+              <div class="preview-icon" id="preview-icon-main">
+                <span style="font-size:20px;">🔔</span>
+              </div>
+              <div class="preview-content">
+                <div class="preview-title" id="preview-title">Notification Title</div>
+                <div class="preview-body" id="preview-body">Notification body text will appear here.</div>
+                <div class="preview-origin">localhost:8000</div>
+              </div>
+            </div>
+
+            <p class="muted" style="font-size:12px;">
+              Note: Actual notification appearance varies by OS and browser.
+              Colors and some options may not be supported on all platforms.
+            </p>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="btn-group" style="justify-content:flex-end;">
+          <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit">Save Template</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let templates = [];
+    const builtinTemplates = {
+      browser_update: { name: "Browser Update", category: "Software Updates", title: "Browser Update Available", body: "A new version is ready to install." },
+      software_update: { name: "Software Update", category: "Software Updates", title: "Software Update Required", body: "Version 2.5.1 is available." },
+      antivirus_outdated: { name: "Antivirus Outdated", category: "Security Alerts", title: "Antivirus Definitions Outdated", body: "Your virus definitions are 7 days old." },
+      suspicious_login: { name: "Suspicious Login", category: "Security Alerts", title: "New Login Detected", body: "A new sign-in was detected. Was this you?" },
+      password_expired: { name: "Password Expiring", category: "Password & Account", title: "Password Expiring Soon", body: "Your password will expire in 3 days." },
+      session_expiring: { name: "Session Expiring", category: "Session & Access", title: "Session Expiring", body: "Your session will expire in 5 minutes." },
+      storage_warning: { name: "Storage Warning", category: "Storage & Quota", title: "Storage Almost Full", body: "You've used 90% of your storage." },
+      trial_ending: { name: "Trial Ending", category: "Subscription & Billing", title: "Trial Ending Soon", body: "Your free trial ends in 2 days." },
+      shared_with_you: { name: "Document Shared", category: "Collaboration", title: "Document Shared With You", body: "John D. shared a file with you." },
+      maintenance: { name: "Maintenance", category: "System Status", title: "Scheduled Maintenance", body: "System maintenance tonight at 2 AM EST." },
+    };
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelector(`.tab-content[data-tab="${tabName}"]`).classList.add('active');
+        if (tabName === 'preview') updatePreview();
+      });
+    });
+
+    // Load templates
+    async function loadTemplates() {
+      try {
+        const res = await fetch('/api/templates');
+        templates = await res.json();
+        renderTemplates();
+        renderBuiltinTemplates();
+      } catch (err) {
+        console.error('Failed to load templates:', err);
+      }
+    }
+
+    function renderTemplates() {
+      const grid = document.getElementById('templates-grid');
+      if (templates.length === 0) {
+        grid.innerHTML = '<div class="card"><p class="muted" style="margin:0;">No custom templates yet. Click "New Template" to create one.</p></div>';
+        return;
+      }
+
+      grid.innerHTML = templates.map(t => `
+        <div class="template-card">
+          <div class="template-header">
+            <div>
+              <div class="template-name">${escapeHtml(t.name)}</div>
+              <span class="template-category">${escapeHtml(t.category)}</span>
+            </div>
+          </div>
+          <div class="template-title">${escapeHtml(t.title)}</div>
+          <div class="template-body">${escapeHtml(t.body || 'No body text')}</div>
+          <div class="template-icons">
+            ${t.icon_default ? '<div class="template-icon" title="Default"><img src="' + escapeHtml(t.icon_default) + '" onerror="this.parentElement.innerHTML=\'🔔\'"></div>' : ''}
+            ${t.icon_windows ? '<div class="template-icon" title="Windows">W</div>' : ''}
+            ${t.icon_macos ? '<div class="template-icon" title="macOS">M</div>' : ''}
+            ${t.icon_linux ? '<div class="template-icon" title="Linux">L</div>' : ''}
+            ${t.icon_android ? '<div class="template-icon" title="Android">A</div>' : ''}
+            ${t.icon_ios ? '<div class="template-icon" title="iOS">i</div>' : ''}
+          </div>
+          <div class="template-actions">
+            <button class="sm secondary" onclick="editTemplate(${t.id})">Edit</button>
+            <button class="sm secondary" onclick="duplicateTemplate(${t.id})">Duplicate</button>
+            <button class="sm secondary" onclick="deleteTemplate(${t.id})">Delete</button>
+            <button class="sm" onclick="useTemplate(${t.id})">Use</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderBuiltinTemplates() {
+      const grid = document.getElementById('builtin-templates');
+      grid.innerHTML = Object.entries(builtinTemplates).map(([key, t]) => `
+        <div class="template-card" style="opacity:0.7;">
+          <div class="template-header">
+            <div>
+              <div class="template-name">${escapeHtml(t.name)}</div>
+              <span class="template-category">${escapeHtml(t.category)}</span>
+            </div>
+          </div>
+          <div class="template-title">${escapeHtml(t.title)}</div>
+          <div class="template-body">${escapeHtml(t.body)}</div>
+          <div class="template-actions">
+            <button class="sm secondary" onclick="copyBuiltin('${key}')">Copy to Custom</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Modal functions
+    function openModal(templateId = null) {
+      document.getElementById('modal-overlay').classList.add('active');
+      document.getElementById('modal-title').textContent = templateId ? 'Edit Template' : 'New Template';
+      document.getElementById('template-id').value = templateId || '';
+
+      // Reset form
+      document.getElementById('template-form').reset();
+
+      // Reset tabs
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('.tab[data-tab="basic"]').classList.add('active');
+      document.querySelector('.tab-content[data-tab="basic"]').classList.add('active');
+
+      // Clear icon previews
+      ['default', 'windows', 'macos', 'linux', 'android', 'ios'].forEach(os => {
+        const preview = document.getElementById(`preview-${os}`);
+        if (preview) preview.innerHTML = '';
+      });
+
+      if (templateId) {
+        const template = templates.find(t => t.id === templateId);
+        if (template) populateForm(template);
+      }
+    }
+
+    function closeModal(event) {
+      if (event && event.target !== document.getElementById('modal-overlay')) return;
+      document.getElementById('modal-overlay').classList.remove('active');
+    }
+
+    function populateForm(t) {
+      document.getElementById('tpl-name').value = t.name || '';
+      document.getElementById('tpl-category').value = t.category || 'Custom';
+      document.getElementById('tpl-title').value = t.title || '';
+      document.getElementById('tpl-body').value = t.body || '';
+      document.getElementById('tpl-url').value = t.url || '';
+      document.getElementById('tpl-tag').value = t.tag || '';
+      document.getElementById('tpl-icon-default').value = t.icon_default || '';
+      document.getElementById('tpl-icon-windows').value = t.icon_windows || '';
+      document.getElementById('tpl-icon-macos').value = t.icon_macos || '';
+      document.getElementById('tpl-icon-linux').value = t.icon_linux || '';
+      document.getElementById('tpl-icon-android').value = t.icon_android || '';
+      document.getElementById('tpl-icon-ios').value = t.icon_ios || '';
+      document.getElementById('tpl-badge').value = t.badge || '';
+      document.getElementById('tpl-color-accent').value = t.color_accent || '';
+      document.getElementById('tpl-color-accent-picker').value = t.color_accent || '#22d3ee';
+      document.getElementById('tpl-color-bg').value = t.color_bg || '';
+      document.getElementById('tpl-color-bg-picker').value = t.color_bg || '#1a1a2e';
+      document.getElementById('tpl-require-interaction').checked = t.require_interaction;
+      document.getElementById('tpl-silent').checked = t.silent;
+
+      // Update icon previews
+      ['default', 'windows', 'macos', 'linux', 'android', 'ios'].forEach(os => updateIconPreview(os));
+    }
+
+    async function saveTemplate(event) {
+      event.preventDefault();
+
+      const id = document.getElementById('template-id').value;
+      const data = {
+        name: document.getElementById('tpl-name').value,
+        category: document.getElementById('tpl-category').value,
+        title: document.getElementById('tpl-title').value,
+        body: document.getElementById('tpl-body').value,
+        url: document.getElementById('tpl-url').value,
+        tag: document.getElementById('tpl-tag').value,
+        icon_default: document.getElementById('tpl-icon-default').value,
+        icon_windows: document.getElementById('tpl-icon-windows').value,
+        icon_macos: document.getElementById('tpl-icon-macos').value,
+        icon_linux: document.getElementById('tpl-icon-linux').value,
+        icon_android: document.getElementById('tpl-icon-android').value,
+        icon_ios: document.getElementById('tpl-icon-ios').value,
+        badge: document.getElementById('tpl-badge').value,
+        color_accent: document.getElementById('tpl-color-accent').value,
+        color_bg: document.getElementById('tpl-color-bg').value,
+        require_interaction: document.getElementById('tpl-require-interaction').checked,
+        silent: document.getElementById('tpl-silent').checked,
+      };
+
+      try {
+        const url = id ? `/api/templates/${id}` : '/api/templates';
+        const method = id ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+
+        if (result.ok) {
+          closeModal();
+          loadTemplates();
+        } else {
+          alert('Error: ' + (result.detail || 'Failed to save'));
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function editTemplate(id) {
+      openModal(id);
+    }
+
+    async function duplicateTemplate(id) {
+      try {
+        const res = await fetch(`/api/templates/${id}/duplicate`, { method: 'POST' });
+        const result = await res.json();
+        if (result.ok) {
+          loadTemplates();
+        } else {
+          alert('Error: ' + (result.detail || 'Failed to duplicate'));
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function deleteTemplate(id) {
+      if (!confirm('Delete this template?')) return;
+      try {
+        const res = await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.ok) {
+          loadTemplates();
+        } else {
+          alert('Error: ' + (result.detail || 'Failed to delete'));
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function useTemplate(id) {
+      // Store template ID and redirect to dashboard
+      localStorage.setItem('use_template_id', id);
+      location.href = '/dashboard';
+    }
+
+    function copyBuiltin(key) {
+      const t = builtinTemplates[key];
+      openModal();
+      document.getElementById('tpl-name').value = t.name + ' (Custom)';
+      document.getElementById('tpl-category').value = t.category;
+      document.getElementById('tpl-title').value = t.title;
+      document.getElementById('tpl-body').value = t.body;
+    }
+
+    // Color sync
+    function syncColor(type) {
+      const picker = document.getElementById(`tpl-color-${type}-picker`);
+      const text = document.getElementById(`tpl-color-${type}`);
+      text.value = picker.value;
+    }
+
+    function syncColorFromText(type) {
+      const picker = document.getElementById(`tpl-color-${type}-picker`);
+      const text = document.getElementById(`tpl-color-${type}`);
+      if (/^#[0-9A-Fa-f]{6}$/.test(text.value)) {
+        picker.value = text.value;
+      }
+    }
+
+    // Icon preview
+    function updateIconPreview(os) {
+      const input = document.getElementById(`tpl-icon-${os}`);
+      const preview = document.getElementById(`preview-${os}`);
+      if (!preview) return;
+
+      if (input.value) {
+        preview.innerHTML = `<img src="${escapeHtml(input.value)}" onerror="this.parentElement.innerHTML='❌'">`;
+      } else {
+        preview.innerHTML = '';
+      }
+    }
+
+    // Notification preview
+    function updatePreview() {
+      const os = document.getElementById('preview-os').value;
+      const title = document.getElementById('tpl-title').value || 'Notification Title';
+      const body = document.getElementById('tpl-body').value || 'Notification body text will appear here.';
+
+      // Get appropriate icon
+      let iconUrl = document.getElementById(`tpl-icon-${os}`).value;
+      if (!iconUrl) iconUrl = document.getElementById('tpl-icon-default').value;
+
+      document.getElementById('preview-title').textContent = title;
+      document.getElementById('preview-body').textContent = body;
+
+      const iconEl = document.getElementById('preview-icon-main');
+      if (iconUrl) {
+        iconEl.innerHTML = `<img src="${escapeHtml(iconUrl)}" onerror="this.parentElement.innerHTML='🔔'">`;
+      } else {
+        iconEl.innerHTML = '<span style="font-size:20px;">🔔</span>';
+      }
+
+      // Apply accent color
+      const accentColor = document.getElementById('tpl-color-accent').value;
+      if (accentColor) {
+        document.getElementById('notification-preview').style.borderLeft = `3px solid ${accentColor}`;
+      } else {
+        document.getElementById('notification-preview').style.borderLeft = 'none';
+      }
+    }
+
+    // Initialize
+    loadTemplates();
+  </script>
+</body>
+</html>

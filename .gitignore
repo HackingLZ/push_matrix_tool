@@ -1,0 +1,95 @@
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+.nfs*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# VAPID keys
+vapid_private.pem
+vapid_public.pem
+*.pem
+*.key
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+push_demo.db
+
+# Config with secrets
+config.json
+
+# SSL/TLS certificates
+*.crt
+*.cer
+*.der
+fullchain.pem
+privkey.pem
+chain.pem
+cert.pem
+ssl/
+certs/
+certificates/
+
+# Let's Encrypt
+letsencrypt/
+.well-known/
+
+# Encrypted/sensitive data
+*.data
+encrypted.data
+*.encrypted
+
+# Logs
+*.log
+logs/
+
+# Local settings
+.claude/settings.local.json

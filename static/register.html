@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Demo · Register</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0f172a; --card:#0b1224; --text:#e2e8f0; --muted:#94a3b8; --accent:#22d3ee; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Space Grotesk','Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    .wrap { max-width:1100px; margin:0 auto; padding:48px 22px 72px; display:grid; gap:22px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    h1 { margin:0; font-size:30px; letter-spacing:-.3px; }
+    .card { background:var(--card); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:22px; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
+    .grid { display:grid; gap:14px; }
+    .two { grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+    button { background:linear-gradient(135deg,#22d3ee,#818cf8); color:#0b1224; border:none; padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; transition:transform 120ms ease; }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:#1f2937; color:var(--text); box-shadow:none; }
+    code { background:rgba(255,255,255,0.08); padding:4px 6px; border-radius:6px; font-size:13px; }
+    .log { background:#0a0f1f; border:1px solid rgba(255,255,255,0.06); border-radius:12px; min-height:160px; padding:12px; font-family:ui-monospace,monospace; color:#cbd5e1; max-height:240px; overflow-y:auto; }
+    .tag { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.06); color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Push Demo · Register</h1>
+        <div class="tag">Public VAPID: <code>{{ public_key }}</code></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="secondary" onclick="location.href='/dashboard'">Dashboard</button>
+        <button class="secondary" onclick="location.href='/templates'">Templates</button>
+        <button class="secondary" onclick="location.href='/debug'">Debug</button>
+        <button class="secondary" onclick="location.href='/admin'">Admin</button>
+      </div>
+    </header>
+
+    <div class="grid two">
+      <div class="card grid">
+        <div class="tag" id="status">Status: idle</div>
+        <p style="margin:0;color:var(--muted);">Click subscribe to request permission, register the service worker, and send the push subscription to the server.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button id="subscribe-btn" onclick="subscribe()">Subscribe browser</button>
+          <button class="secondary" onclick="simulate()">Simulate push</button>
+        </div>
+        <div class="tag" id="perm-tag">Permission: unknown</div>
+        <div class="tag" id="sw-tag">Service worker: pending</div>
+      </div>
+
+      <div class="card grid">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>Live log</strong>
+          <button class="secondary" onclick="clearLog()">Clear</button>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <div class="card grid">
+      <strong>Current subscription</strong>
+      <pre id="subscription" style="margin:0;color:#cbd5e1;white-space:pre-wrap;">None yet.</pre>
+    </div>
+  </div>
+
+  <script>
+    const publicKey = "{{ public_key }}";
+    const CLIENT_ID_KEY = "push_demo_client_id";
+
+    const logEl = document.getElementById("log");
+    function log(msg) {
+      const div = document.createElement("div");
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logEl.prepend(div);
+    }
+    function setStatus(text) { document.getElementById("status").textContent = `Status: ${text}`; }
+    function setTag(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
+    function clearLog() { logEl.innerHTML = ""; }
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const rawData = atob(base64);
+      return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+    }
+
+    // Generate or retrieve persistent client ID
+    function getClientId() {
+      let clientId = localStorage.getItem(CLIENT_ID_KEY);
+      if (!clientId) {
+        // Generate a unique ID based on random + timestamp
+        clientId = crypto.randomUUID ? crypto.randomUUID() :
+          'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+          });
+        localStorage.setItem(CLIENT_ID_KEY, clientId);
+      }
+      return clientId;
+    }
+
+    // Collect device information
+    async function getDeviceInfo() {
+      const ua = navigator.userAgent;
+      const platform = navigator.platform || "Unknown";
+
+      // Detect device type
+      let deviceType = "desktop";
+      if (/Mobi|Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+        deviceType = /iPad|Tablet/i.test(ua) ? "tablet" : "mobile";
+      }
+
+      // Detect OS and version
+      let os = "Unknown";
+      let osVersion = "";
+      if (/Windows NT 10/i.test(ua)) { os = "Windows"; osVersion = "10/11"; }
+      else if (/Windows NT 6.3/i.test(ua)) { os = "Windows"; osVersion = "8.1"; }
+      else if (/Windows NT 6.2/i.test(ua)) { os = "Windows"; osVersion = "8"; }
+      else if (/Windows NT 6.1/i.test(ua)) { os = "Windows"; osVersion = "7"; }
+      else if (/Windows/i.test(ua)) { os = "Windows"; }
+      else if (/Mac OS X (\d+[._]\d+)/i.test(ua)) {
+        os = "macOS";
+        const match = ua.match(/Mac OS X (\d+[._]\d+[._]?\d*)/i);
+        if (match) osVersion = match[1].replace(/_/g, '.');
+      }
+      else if (/Android (\d+(\.\d+)?)/i.test(ua)) {
+        os = "Android";
+        const match = ua.match(/Android (\d+(\.\d+)?)/i);
+        if (match) osVersion = match[1];
+      }
+      else if (/iPhone OS (\d+_\d+)/i.test(ua) || /iPad.*OS (\d+_\d+)/i.test(ua)) {
+        os = "iOS";
+        const match = ua.match(/OS (\d+_\d+)/i);
+        if (match) osVersion = match[1].replace(/_/g, '.');
+      }
+      else if (/Linux/i.test(ua)) os = "Linux";
+      else if (/CrOS/i.test(ua)) os = "ChromeOS";
+
+      // Detect browser and full version
+      let browser = "Unknown";
+      let browserVersion = "";
+      if (/Edg\/(\d+(\.\d+)*)/i.test(ua)) {
+        browser = "Edge";
+        browserVersion = ua.match(/Edg\/(\d+(\.\d+)*)/i)[1];
+      } else if (/OPR\/(\d+(\.\d+)*)/i.test(ua)) {
+        browser = "Opera";
+        browserVersion = ua.match(/OPR\/(\d+(\.\d+)*)/i)[1];
+      } else if (/Chrome\/(\d+(\.\d+)*)/i.test(ua) && !/Chromium/i.test(ua)) {
+        browser = "Chrome";
+        browserVersion = ua.match(/Chrome\/(\d+(\.\d+)*)/i)[1];
+      } else if (/Firefox\/(\d+(\.\d+)*)/i.test(ua)) {
+        browser = "Firefox";
+        browserVersion = ua.match(/Firefox\/(\d+(\.\d+)*)/i)[1];
+      } else if (/Version\/(\d+(\.\d+)*).*Safari/i.test(ua)) {
+        browser = "Safari";
+        browserVersion = ua.match(/Version\/(\d+(\.\d+)*)/i)[1];
+      } else if (/MSIE (\d+)/i.test(ua) || /Trident.*rv:(\d+)/i.test(ua)) {
+        browser = "IE";
+        const match = ua.match(/MSIE (\d+)/i) || ua.match(/rv:(\d+)/i);
+        if (match) browserVersion = match[1];
+      }
+
+      // User-Agent Client Hints (Chrome 90+)
+      let uaData = null;
+      if (navigator.userAgentData) {
+        try {
+          uaData = await navigator.userAgentData.getHighEntropyValues([
+            "architecture", "bitness", "model", "platformVersion",
+            "fullVersionList", "wow64"
+          ]);
+        } catch (e) {}
+      }
+
+      // Screen info
+      const scr = window.screen || {};
+      const screenRes = `${scr.width || 0}x${scr.height || 0}`;
+      const screenAvail = `${scr.availWidth || 0}x${scr.availHeight || 0}`;
+      const colorDepth = scr.colorDepth || 0;
+      const pixelRatio = window.devicePixelRatio || 1;
+      const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+      // Timezone
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Unknown";
+      const timezoneOffset = new Date().getTimezoneOffset();
+
+      // Language
+      const language = navigator.language || navigator.userLanguage || "Unknown";
+      const languages = navigator.languages ? [...navigator.languages] : [language];
+
+      // Connection info
+      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      let connectionInfo = { type: "unknown" };
+      if (conn) {
+        connectionInfo = {
+          type: conn.effectiveType || conn.type || "unknown",
+          downlink: conn.downlink,  // Mbps
+          rtt: conn.rtt,  // ms round-trip time
+          saveData: conn.saveData || false,
+        };
+      }
+
+      // Memory (Chrome only)
+      const deviceMemory = navigator.deviceMemory || null;
+
+      // CPU cores
+      const cpuCores = navigator.hardwareConcurrency || null;
+
+      // Touch support
+      const maxTouchPoints = navigator.maxTouchPoints || 0;
+      const touchSupport = 'ontouchstart' in window || maxTouchPoints > 0;
+
+      // Battery (if available)
+      let battery = null;
+      if (navigator.getBattery) {
+        try {
+          const batt = await navigator.getBattery();
+          battery = {
+            charging: batt.charging,
+            level: Math.round(batt.level * 100),
+            chargingTime: batt.chargingTime === Infinity ? null : batt.chargingTime,
+            dischargingTime: batt.dischargingTime === Infinity ? null : batt.dischargingTime,
+          };
+        } catch (e) {}
+      }
+
+      // Storage estimate (if available)
+      let storage = null;
+      if (navigator.storage && navigator.storage.estimate) {
+        try {
+          const est = await navigator.storage.estimate();
+          storage = {
+            quota: Math.round((est.quota || 0) / 1024 / 1024),  // MB
+            usage: Math.round((est.usage || 0) / 1024 / 1024),  // MB
+          };
+        } catch (e) {}
+      }
+
+      // Media devices (camera/mic presence, not access)
+      let mediaDevices = null;
+      if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          mediaDevices = {
+            audioinput: devices.filter(d => d.kind === 'audioinput').length,
+            videoinput: devices.filter(d => d.kind === 'videoinput').length,
+            audiooutput: devices.filter(d => d.kind === 'audiooutput').length,
+          };
+        } catch (e) {}
+      }
+
+      // GPU info via WebGL
+      let gpu = null;
+      try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (gl) {
+          const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+          if (debugInfo) {
+            gpu = {
+              vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL),
+              renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL),
+            };
+          }
+        }
+      } catch (e) {}
+
+      // Canvas fingerprint hash (for identification, not displayed)
+      let canvasHash = null;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 200;
+        canvas.height = 50;
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = 'top';
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#f60';
+        ctx.fillRect(0, 0, 200, 50);
+        ctx.fillStyle = '#069';
+        ctx.fillText('Push Demo Canvas FP', 2, 15);
+        ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+        ctx.fillText('Push Demo Canvas FP', 4, 17);
+        canvasHash = canvas.toDataURL().slice(-50);  // Last 50 chars as simple hash
+      } catch (e) {}
+
+      // Permissions status (where supported)
+      let permissions = {};
+      if (navigator.permissions) {
+        const permNames = ['notifications', 'geolocation', 'camera', 'microphone'];
+        for (const name of permNames) {
+          try {
+            const status = await navigator.permissions.query({ name });
+            permissions[name] = status.state;
+          } catch (e) {
+            permissions[name] = 'unsupported';
+          }
+        }
+      }
+
+      // PDF viewer
+      const pdfViewerEnabled = navigator.pdfViewerEnabled ?? null;
+
+      // WebDriver (automation detection)
+      const webdriver = navigator.webdriver || false;
+
+      // Installed plugins (legacy, mostly empty in modern browsers)
+      const plugins = [];
+      if (navigator.plugins) {
+        for (let i = 0; i < Math.min(navigator.plugins.length, 10); i++) {
+          plugins.push(navigator.plugins[i].name);
+        }
+      }
+
+      return {
+        // Device
+        deviceType,
+        platform,
+
+        // OS
+        os,
+        osVersion,
+
+        // Browser
+        browser,
+        browserVersion,
+        vendor: navigator.vendor || "",
+
+        // User-Agent Client Hints (Chrome 90+)
+        uaData: uaData ? {
+          architecture: uaData.architecture,
+          bitness: uaData.bitness,
+          model: uaData.model,
+          platformVersion: uaData.platformVersion,
+          wow64: uaData.wow64,
+        } : null,
+
+        // Screen
+        screenRes,
+        screenAvail,
+        viewport: `${viewportWidth}x${viewportHeight}`,
+        colorDepth,
+        pixelRatio,
+
+        // Locale
+        timezone,
+        timezoneOffset,
+        language,
+        languages,
+
+        // Hardware
+        cpuCores,
+        deviceMemory,
+        gpu,
+        maxTouchPoints,
+        touchSupport,
+
+        // Network
+        connection: connectionInfo,
+        online: navigator.onLine,
+
+        // Battery
+        battery,
+
+        // Storage
+        storage,
+
+        // Media
+        mediaDevices,
+
+        // Permissions
+        permissions,
+
+        // Browser features
+        cookiesEnabled: navigator.cookieEnabled,
+        doNotTrack: navigator.doNotTrack === "1" || navigator.doNotTrack === "yes",
+        pdfViewerEnabled,
+        webdriver,
+        plugins,
+
+        // Fingerprinting
+        canvasHash,
+
+        // Raw UA
+        userAgent: ua,
+      };
+    }
+
+    async function subscribe() {
+      setStatus("starting");
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+        alert("Push not supported in this browser");
+        setStatus("unsupported");
+        return;
+      }
+      try {
+        const perm = await Notification.requestPermission();
+        setTag("perm-tag", `Permission: ${perm}`);
+        if (perm !== "granted") { setStatus("denied"); return; }
+        log("Permission granted");
+
+        const registration = await navigator.serviceWorker.register("/sw.js");
+        await navigator.serviceWorker.ready;
+        setTag("sw-tag", `Service worker: ready (${registration.scope})`);
+        log("Service worker registered");
+
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+        log("Created subscription, posting to server...");
+
+        const clientId = getClientId();
+        const deviceInfo = await getDeviceInfo();
+        log(`Client ID: ${clientId.slice(0, 8)}...`);
+
+        const res = await fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            clientId: clientId,
+            deviceInfo: deviceInfo,
+          }),
+        });
+        if (!res.ok) throw new Error("Server rejected subscription");
+        const data = await res.json();
+        log(`Stored as client id ${data.id}`);
+        document.getElementById("subscription").textContent = JSON.stringify(subscription.toJSON(), null, 2);
+        setStatus("ready");
+        document.getElementById("subscribe-btn").disabled = true;
+
+        // Register periodic background sync if supported (keeps subscription alive)
+        if ("periodicSync" in registration) {
+          try {
+            const status = await navigator.permissions.query({ name: "periodic-background-sync" });
+            if (status.state === "granted") {
+              await registration.periodicSync.register("push-keepalive", { minInterval: 12 * 60 * 60 * 1000 }); // 12 hours
+              log("Periodic sync registered for keepalive");
+            }
+          } catch (e) {
+            log("Periodic sync not available: " + e.message);
+          }
+        }
+
+        // Fallback: set up visibility-based keepalive
+        setupVisibilityKeepalive();
+      } catch (err) {
+        console.error(err);
+        log(err.message);
+        setStatus("error");
+      }
+    }
+
+    async function simulate() {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg || !reg.active) { log("No active service worker yet"); return; }
+      reg.active.postMessage({ type: "simulate-push", payload: { title: "Simulated", body: "Hello from the page", url: "/" } });
+      log("Simulated push sent to service worker");
+    }
+
+    navigator.serviceWorker.addEventListener("message", (evt) => {
+      if (evt.data?.type === "push-received") {
+        log(`Push received: ${evt.data.data.title}`);
+      }
+    });
+
+    const perm = typeof Notification !== "undefined" ? Notification.permission : "unsupported";
+    setTag("perm-tag", `Permission: ${perm}`);
+    navigator.serviceWorker.getRegistration().then((reg) => {
+      if (reg) setTag("sw-tag", `Service worker: ${reg.active ? "ready" : "registered"}`);
+    });
+
+    // Auto-revalidate subscription on page load (handles browser restart case)
+    async function revalidateSubscription() {
+      try {
+        let reg = await navigator.serviceWorker.getRegistration();
+
+        // Ensure service worker is registered
+        if (!reg) {
+          log("No service worker, registering...");
+          reg = await navigator.serviceWorker.register("/sw.js");
+          await navigator.serviceWorker.ready;
+          log("Service worker registered");
+        }
+
+        let subscription = await reg.pushManager.getSubscription();
+
+        // If no subscription exists (browser cleared it on restart), create a new one
+        if (!subscription) {
+          log("No subscription found, creating new one...");
+          try {
+            subscription = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(publicKey),
+            });
+            log("New subscription created");
+          } catch (subErr) {
+            log(`Failed to create subscription: ${subErr.message}`);
+            return;
+          }
+        }
+
+        // Register/re-register with server
+        const clientId = getClientId();
+        const deviceInfo = await getDeviceInfo();
+        log(`Registering with client ID: ${clientId.slice(0, 8)}...`);
+
+        const res = await fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            clientId: clientId,
+            deviceInfo: deviceInfo,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const status = data.updated ? "updated" : "registered";
+          log(`Subscription ${status} (client ${data.id})`);
+          document.getElementById("subscription").textContent = JSON.stringify(subscription.toJSON(), null, 2);
+          setStatus("ready");
+          document.getElementById("subscribe-btn").disabled = true;
+          setTag("sw-tag", `Service worker: ready`);
+        }
+      } catch (err) {
+        log(`Revalidation error: ${err.message}`);
+      }
+    }
+
+    // Run on page load
+    if (perm === "granted") {
+      revalidateSubscription();
+      setupVisibilityKeepalive();
+    }
+
+    // Visibility-based keepalive: refresh subscription when tab becomes visible
+    let lastKeepalive = Date.now();
+    function setupVisibilityKeepalive() {
+      document.addEventListener("visibilitychange", async () => {
+        if (document.visibilityState === "visible") {
+          // Only send keepalive if more than 1 hour since last one
+          if (Date.now() - lastKeepalive > 60 * 60 * 1000) {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg?.active) {
+              reg.active.postMessage({ type: "keepalive" });
+              lastKeepalive = Date.now();
+              log("Keepalive sent (tab became visible)");
+            }
+          }
+        }
+      });
+    }
+
+    // Heartbeat: send periodic pings to server to show we're online
+    let heartbeatInterval = null;
+    function startHeartbeat() {
+      const clientId = getClientId();
+      if (!clientId) return;
+
+      // Send heartbeat every 30 seconds
+      const sendHeartbeat = async () => {
+        try {
+          const deviceInfo = await getDeviceInfo();
+          await fetch("/api/heartbeat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              clientId: clientId,
+              deviceInfo: deviceInfo,
+            }),
+          });
+        } catch (err) {
+          // Silently fail - we'll retry on next interval
+        }
+      };
+
+      // Send immediately, then every 30 seconds
+      sendHeartbeat();
+      heartbeatInterval = setInterval(sendHeartbeat, 30000);
+
+      // Also send when page becomes visible again
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          sendHeartbeat();
+        }
+      });
+    }
+
+    // Start heartbeat if we have permission
+    if (perm === "granted") {
+      startHeartbeat();
+    }
+  </script>
+</body>
+</html>

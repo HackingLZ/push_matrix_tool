@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Demo · Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0f172a; --card:#0b1224; --text:#e2e8f0; --muted:#94a3b8; --accent:#22d3ee; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Space Grotesk','Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    .wrap { max-width:900px; margin:0 auto; padding:48px 22px 72px; display:grid; gap:20px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    h1 { margin:0; font-size:30px; letter-spacing:-.3px; }
+    h3 { margin:0 0 12px 0; font-size:16px; color:var(--text); }
+    .card { background:var(--card); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
+    .grid { display:grid; gap:14px; }
+    .two { grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
+    label { color:var(--muted); font-size:14px; margin-bottom:4px; display:block; }
+    input, select { width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); color:var(--text); font-size:15px; }
+    input:disabled { opacity:0.5; }
+    button { background:linear-gradient(135deg,#22d3ee,#818cf8); color:#0b1224; border:none; padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; transition:transform 120ms ease; }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:#1f2937; color:var(--text); box-shadow:none; }
+    button.danger { background:linear-gradient(135deg,#ef4444,#dc2626); }
+    .muted { color:var(--muted); }
+    code { background:rgba(255,255,255,0.08); padding:4px 6px; border-radius:6px; font-size:13px; }
+    .tag { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.06); color:var(--muted); font-size:13px; }
+    .form-group { display:grid; gap:6px; }
+    .checkbox-group { display:flex; align-items:center; gap:10px; }
+    .checkbox-group input { width:auto; }
+    .status { padding:10px 14px; border-radius:10px; font-size:13px; }
+    .status.success { background:rgba(34,197,94,0.15); color:#4ade80; }
+    .status.error { background:rgba(239,68,68,0.15); color:#f87171; }
+    .status.warn { background:rgba(234,179,8,0.15); color:#facc15; }
+    .status.info { background:rgba(59,130,246,0.15); color:#60a5fa; }
+    .btn-group { display:flex; gap:10px; flex-wrap:wrap; }
+    .divider { border-top:1px solid rgba(255,255,255,0.06); margin:10px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Push Demo · Admin</h1>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="secondary" onclick="location.href='/register'">Register</button>
+        <button class="secondary" onclick="location.href='/dashboard'">Dashboard</button>
+        <button class="secondary" onclick="location.href='/templates'">Templates</button>
+        <button class="secondary" onclick="location.href='/debug'">Debug</button>
+        <button class="secondary" onclick="location.href='/admin'">Admin</button>
+      </div>
+    </header>
+
+    <div class="grid two">
+      <div class="card grid">
+        <h3>SSL/TLS Configuration</h3>
+        <p class="muted" style="margin:0;">Configure HTTPS for your server. Changes require a restart.</p>
+
+        <div class="form-group">
+          <div class="checkbox-group">
+            <input type="checkbox" id="ssl-enabled" onchange="toggleSSLMode()">
+            <label for="ssl-enabled" style="margin:0;">Enable SSL/TLS</label>
+          </div>
+        </div>
+
+        <div id="ssl-options" style="display:none;" class="grid">
+          <div class="form-group">
+            <label>SSL Mode</label>
+            <select id="ssl-mode" onchange="toggleSSLMode()">
+              <option value="letsencrypt">Let's Encrypt (automatic)</option>
+              <option value="manual">Manual certificates</option>
+            </select>
+          </div>
+
+          <div id="letsencrypt-options" class="grid">
+            <div class="form-group">
+              <label for="domain">Domain</label>
+              <input type="text" id="domain" placeholder="push.example.com">
+            </div>
+            <div class="form-group">
+              <label for="email">Email (for Let's Encrypt)</label>
+              <input type="email" id="email" placeholder="admin@example.com">
+            </div>
+          </div>
+
+          <div id="manual-options" class="grid" style="display:none;">
+            <div class="form-group">
+              <label for="ssl-cert">Certificate path</label>
+              <input type="text" id="ssl-cert" placeholder="/etc/letsencrypt/live/example.com/fullchain.pem">
+            </div>
+            <div class="form-group">
+              <label for="ssl-key">Private key path</label>
+              <input type="text" id="ssl-key" placeholder="/etc/letsencrypt/live/example.com/privkey.pem">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="port">HTTPS Port</label>
+            <input type="number" id="port" value="443" min="1" max="65535">
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button onclick="saveSSLConfig()">Save SSL Config</button>
+        </div>
+
+        <div id="ssl-status"></div>
+      </div>
+
+      <div class="card grid">
+        <h3>Security</h3>
+
+        <div class="form-group">
+          <label for="new-password">Change Admin Password</label>
+          <input type="password" id="new-password" placeholder="New password (min 8 chars)">
+        </div>
+        <div class="form-group">
+          <input type="password" id="confirm-password" placeholder="Confirm password">
+        </div>
+        <div class="btn-group">
+          <button class="secondary" onclick="changePassword()">Change Password</button>
+        </div>
+        <div id="password-status"></div>
+
+        <div class="divider"></div>
+
+        <div class="form-group">
+          <label>Current Credentials</label>
+          <p class="muted" style="margin:0;">Username: <code>admin</code></p>
+          <p class="muted" style="margin:0;">Password is stored in <code>config.json</code></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div class="card grid">
+        <h3>Redirect Configuration</h3>
+        <p class="muted" style="margin:0;">Where to send users after registration.</p>
+
+        <div class="form-group">
+          <label>After Registration</label>
+          <select id="redirect-mode" onchange="toggleRedirectMode()">
+            <option value="thanks">Show Thank You page (default)</option>
+            <option value="custom">Redirect to custom URL</option>
+          </select>
+        </div>
+
+        <div id="redirect-options" style="display:none;" class="form-group">
+          <label for="redirect-url">Redirect URL</label>
+          <input type="url" id="redirect-url" placeholder="https://example.com/welcome">
+        </div>
+
+        <div class="btn-group">
+          <button onclick="saveRedirectConfig()">Save Redirect Config</button>
+        </div>
+        <div id="redirect-status"></div>
+      </div>
+
+      <div class="card grid">
+        <h3>Webhook Configuration</h3>
+        <p class="muted" style="margin:0;">Send HTTP POST requests when events occur.</p>
+
+        <div class="form-group">
+          <label for="webhook-url">Webhook URL</label>
+          <input type="url" id="webhook-url" placeholder="https://example.com/webhook">
+          <span class="muted" style="font-size:11px;">Leave empty to disable webhooks</span>
+        </div>
+
+        <div class="form-group">
+          <label>Events</label>
+          <div class="checkbox-group">
+            <input type="checkbox" id="webhook-register" checked>
+            <label for="webhook-register" style="margin:0;">New client registration</label>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button onclick="saveWebhookConfig()">Save Webhook Config</button>
+          <button class="secondary" onclick="testWebhook()">Test Webhook</button>
+        </div>
+        <div id="webhook-status"></div>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div class="card grid">
+        <h3>Test Mode</h3>
+        <p class="muted" style="margin:0;">Test notifications before sending to all clients.</p>
+
+        <div class="form-group">
+          <label for="test-client">Test Client ID</label>
+          <select id="test-client">
+            <option value="">Select a client for testing</option>
+          </select>
+          <span class="muted" style="font-size:11px;">Notifications from Dashboard with this client selected will only send to this device</span>
+        </div>
+
+        <div class="btn-group">
+          <button onclick="saveTestConfig()">Save Test Config</button>
+          <button class="secondary" onclick="sendTestNotification()">Send Test Now</button>
+        </div>
+        <div id="test-status"></div>
+      </div>
+    </div>
+
+    <div class="card grid">
+      <h3>VAPID Configuration</h3>
+      <p class="muted" style="margin:0;">VAPID keys identify your server to push services. Changing these will invalidate all existing subscriptions.</p>
+
+      <div class="status warn">
+        <strong>Warning:</strong> Changing VAPID keys will break all existing push subscriptions. Clients will need to re-register.
+      </div>
+
+      <div class="form-group">
+        <label for="vapid-public">Public Key (Base64 URL-safe)</label>
+        <input type="text" id="vapid-public" value="{{ public_key }}" readonly style="font-family:monospace;font-size:11px;">
+      </div>
+
+      <div class="form-group">
+        <label for="vapid-private">Private Key Path</label>
+        <input type="text" id="vapid-private" placeholder="vapid_private.pem" value="vapid_private.pem">
+        <span class="muted" style="font-size:11px;">Path relative to server directory, or absolute path</span>
+      </div>
+
+      <div class="form-group">
+        <div class="checkbox-group">
+          <input type="checkbox" id="vapid-regenerate">
+          <label for="vapid-regenerate" style="margin:0;color:#f87171;">Regenerate VAPID keys (dangerous!)</label>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="danger" onclick="saveVapidConfig()">Save VAPID Config</button>
+      </div>
+      <div id="vapid-status"></div>
+    </div>
+
+    <div class="card grid">
+      <h3>Server Control</h3>
+      <p class="muted" style="margin:0;">SSL and VAPID changes require a server restart to take effect.</p>
+
+      <div id="restart-command" class="status info" style="display:none;">
+        <strong>Restart command:</strong><br>
+        <code id="restart-cmd">python server.py</code>
+      </div>
+
+      <div class="btn-group">
+        <button class="secondary" onclick="showRestartCommand()">Show Restart Command</button>
+        <button class="danger" onclick="confirmRestart()">Request Restart</button>
+      </div>
+      <div id="restart-status"></div>
+    </div>
+
+    <div class="card grid">
+      <h3>Current Configuration</h3>
+      <pre id="current-config" style="margin:0;color:#cbd5e1;font-size:12px;"></pre>
+    </div>
+  </div>
+
+  <script>
+    let currentConfig = {};
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/admin/config');
+        currentConfig = await res.json();
+        displayConfig();
+        populateForm();
+      } catch (err) {
+        console.error('Failed to load config:', err);
+      }
+    }
+
+    function displayConfig() {
+      document.getElementById('current-config').textContent = JSON.stringify(currentConfig, null, 2);
+    }
+
+    function populateForm() {
+      const sslEnabled = currentConfig.ssl_enabled || currentConfig.domain || currentConfig.ssl_cert;
+      document.getElementById('ssl-enabled').checked = sslEnabled;
+
+      if (currentConfig.domain) {
+        document.getElementById('ssl-mode').value = 'letsencrypt';
+        document.getElementById('domain').value = currentConfig.domain || '';
+        document.getElementById('email').value = currentConfig.email || '';
+      } else if (currentConfig.ssl_cert) {
+        document.getElementById('ssl-mode').value = 'manual';
+        document.getElementById('ssl-cert').value = currentConfig.ssl_cert || '';
+        document.getElementById('ssl-key').value = currentConfig.ssl_key || '';
+      }
+
+      document.getElementById('port').value = currentConfig.port || 443;
+      toggleSSLMode();
+
+      // Redirect config
+      if (currentConfig.redirect_url) {
+        document.getElementById('redirect-mode').value = 'custom';
+        document.getElementById('redirect-url').value = currentConfig.redirect_url;
+      } else {
+        document.getElementById('redirect-mode').value = 'thanks';
+      }
+      toggleRedirectMode();
+
+      // VAPID config
+      if (currentConfig.vapid_private_path) {
+        document.getElementById('vapid-private').value = currentConfig.vapid_private_path;
+      }
+
+      // Webhook config
+      if (currentConfig.webhook_url) {
+        document.getElementById('webhook-url').value = currentConfig.webhook_url;
+      }
+
+      // Test config
+      if (currentConfig.test_client_id) {
+        document.getElementById('test-client').value = currentConfig.test_client_id;
+      }
+    }
+
+    function toggleRedirectMode() {
+      const mode = document.getElementById('redirect-mode').value;
+      document.getElementById('redirect-options').style.display = mode === 'custom' ? 'block' : 'none';
+    }
+
+    async function saveRedirectConfig() {
+      const mode = document.getElementById('redirect-mode').value;
+      const url = document.getElementById('redirect-url').value;
+      const statusEl = document.getElementById('redirect-status');
+
+      const config = {
+        redirect_url: mode === 'custom' ? url : '',
+      };
+
+      try {
+        const res = await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config),
+        });
+        const data = await res.json();
+        statusEl.className = 'status success';
+        statusEl.textContent = 'Redirect configuration saved.';
+        loadConfig();
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Failed to save: ' + err.message;
+      }
+    }
+
+    async function saveVapidConfig() {
+      const regenerate = document.getElementById('vapid-regenerate').checked;
+      const privatePath = document.getElementById('vapid-private').value;
+      const statusEl = document.getElementById('vapid-status');
+
+      if (regenerate && !confirm('Are you SURE you want to regenerate VAPID keys? All existing subscriptions will stop working!')) {
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/vapid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            regenerate: regenerate,
+            private_path: privatePath,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          statusEl.className = 'status success';
+          statusEl.textContent = data.message;
+          if (regenerate) {
+            document.getElementById('vapid-regenerate').checked = false;
+            // Reload to show new public key
+            setTimeout(() => location.reload(), 1500);
+          }
+          loadConfig();
+        } else {
+          statusEl.className = 'status error';
+          statusEl.textContent = data.detail || 'Failed to save';
+        }
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Failed to save: ' + err.message;
+      }
+    }
+
+    function toggleSSLMode() {
+      const sslEnabled = document.getElementById('ssl-enabled').checked;
+      const sslOptions = document.getElementById('ssl-options');
+      const sslMode = document.getElementById('ssl-mode').value;
+      const letsencryptOptions = document.getElementById('letsencrypt-options');
+      const manualOptions = document.getElementById('manual-options');
+
+      sslOptions.style.display = sslEnabled ? 'grid' : 'none';
+      letsencryptOptions.style.display = sslMode === 'letsencrypt' ? 'grid' : 'none';
+      manualOptions.style.display = sslMode === 'manual' ? 'grid' : 'none';
+    }
+
+    async function saveSSLConfig() {
+      const sslEnabled = document.getElementById('ssl-enabled').checked;
+      const sslMode = document.getElementById('ssl-mode').value;
+
+      const config = {
+        ssl_enabled: sslEnabled,
+        port: parseInt(document.getElementById('port').value) || 443,
+      };
+
+      if (sslEnabled) {
+        if (sslMode === 'letsencrypt') {
+          config.domain = document.getElementById('domain').value;
+          config.email = document.getElementById('email').value;
+          config.ssl_cert = '';
+          config.ssl_key = '';
+        } else {
+          config.ssl_cert = document.getElementById('ssl-cert').value;
+          config.ssl_key = document.getElementById('ssl-key').value;
+          config.domain = '';
+          config.email = '';
+        }
+      }
+
+      const statusEl = document.getElementById('ssl-status');
+      try {
+        const res = await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config),
+        });
+        const data = await res.json();
+        statusEl.className = 'status success';
+        statusEl.textContent = data.message;
+        loadConfig();
+        showRestartCommand();
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Failed to save: ' + err.message;
+      }
+    }
+
+    async function changePassword() {
+      const newPass = document.getElementById('new-password').value;
+      const confirmPass = document.getElementById('confirm-password').value;
+      const statusEl = document.getElementById('password-status');
+
+      if (newPass !== confirmPass) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Passwords do not match';
+        return;
+      }
+
+      if (newPass.length < 8) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Password must be at least 8 characters';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: newPass }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          statusEl.className = 'status success';
+          statusEl.textContent = data.message + ' You may need to re-login.';
+          document.getElementById('new-password').value = '';
+          document.getElementById('confirm-password').value = '';
+        } else {
+          statusEl.className = 'status error';
+          statusEl.textContent = data.detail || 'Failed to change password';
+        }
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Failed: ' + err.message;
+      }
+    }
+
+    function showRestartCommand() {
+      const cmdEl = document.getElementById('restart-command');
+      const codeEl = document.getElementById('restart-cmd');
+
+      let cmd = 'python server.py';
+
+      if (currentConfig.ssl_enabled || currentConfig.domain || currentConfig.ssl_cert) {
+        if (currentConfig.domain) {
+          cmd = `sudo python server.py --domain ${currentConfig.domain}`;
+          if (currentConfig.email) cmd += ` --email ${currentConfig.email}`;
+          if (currentConfig.port && currentConfig.port !== 443) cmd += ` --port ${currentConfig.port}`;
+        } else if (currentConfig.ssl_cert && currentConfig.ssl_key) {
+          cmd = `python server.py --ssl --ssl-cert "${currentConfig.ssl_cert}" --ssl-key "${currentConfig.ssl_key}"`;
+          if (currentConfig.port) cmd += ` --port ${currentConfig.port}`;
+        }
+      }
+
+      codeEl.textContent = cmd;
+      cmdEl.style.display = 'block';
+    }
+
+    async function confirmRestart() {
+      if (!confirm('Are you sure you want to restart? You will need to manually restart the server.')) {
+        return;
+      }
+
+      const statusEl = document.getElementById('restart-status');
+      try {
+        const res = await fetch('/api/admin/restart', { method: 'POST' });
+        const data = await res.json();
+        statusEl.className = 'status warn';
+        statusEl.innerHTML = data.message + '<br><code>' + data.hint + '</code>';
+        showRestartCommand();
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    // Webhook functions
+    async function saveWebhookConfig() {
+      const webhookUrl = document.getElementById('webhook-url').value;
+      const statusEl = document.getElementById('webhook-status');
+
+      try {
+        const res = await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ webhook_url: webhookUrl }),
+        });
+        const data = await res.json();
+        statusEl.className = 'status success';
+        statusEl.textContent = 'Webhook configuration saved.';
+        loadConfig();
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Failed to save: ' + err.message;
+      }
+    }
+
+    async function testWebhook() {
+      const webhookUrl = document.getElementById('webhook-url').value;
+      const statusEl = document.getElementById('webhook-status');
+
+      if (!webhookUrl) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Please enter a webhook URL first.';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/webhook/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: webhookUrl }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          statusEl.className = 'status success';
+          statusEl.textContent = 'Test webhook sent successfully!';
+        } else {
+          statusEl.className = 'status error';
+          statusEl.textContent = 'Webhook failed: ' + (data.error || 'Unknown error');
+        }
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Failed: ' + err.message;
+      }
+    }
+
+    // Test mode functions
+    async function loadClients() {
+      try {
+        const res = await fetch('/api/clients');
+        const clients = await res.json();
+        const select = document.getElementById('test-client');
+        select.innerHTML = '<option value="">Select a client for testing</option>';
+        clients.forEach(client => {
+          const opt = document.createElement('option');
+          opt.value = client.id;
+          opt.textContent = `Client ${client.id} (${client.ip || 'unknown IP'})`;
+          select.appendChild(opt);
+        });
+      } catch (err) {
+        console.error('Failed to load clients:', err);
+      }
+    }
+
+    async function saveTestConfig() {
+      const testClient = document.getElementById('test-client').value;
+      const statusEl = document.getElementById('test-status');
+
+      try {
+        const res = await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ test_client_id: testClient }),
+        });
+        const data = await res.json();
+        statusEl.className = 'status success';
+        statusEl.textContent = testClient ? 'Test mode enabled for client ' + testClient : 'Test mode disabled.';
+        loadConfig();
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Failed to save: ' + err.message;
+      }
+    }
+
+    async function sendTestNotification() {
+      const testClient = document.getElementById('test-client').value;
+      const statusEl = document.getElementById('test-status');
+
+      if (!testClient) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Please select a test client first.';
+        return;
+      }
+
+      try {
+        const form = new FormData();
+        form.append('title', 'Test Notification');
+        form.append('body', 'This is a test notification from the admin panel.');
+        form.append('url', '/admin');
+        form.append('target', testClient);
+
+        const res = await fetch('/api/send', {
+          method: 'POST',
+          body: form,
+        });
+
+        if (res.redirected || res.ok) {
+          statusEl.className = 'status success';
+          statusEl.textContent = 'Test notification sent!';
+        } else {
+          statusEl.className = 'status error';
+          statusEl.textContent = 'Failed to send test notification.';
+        }
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Failed: ' + err.message;
+      }
+    }
+
+    // Load config on page load
+    loadConfig();
+    loadClients();
+  </script>
+</body>
+</html>

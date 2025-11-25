@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Demo - Test Harness</title>
+  <style>
+    :root { --bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --pass:#22c55e; --fail:#ef4444; --warn:#f59e0b; --info:#3b82f6; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:20px; }
+    .container { max-width:1200px; margin:0 auto; }
+    h1 { margin:0 0 8px 0; font-size:28px; }
+    h2 { margin:24px 0 12px 0; font-size:20px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; }
+    h3 { margin:16px 0 8px 0; font-size:16px; color:var(--muted); }
+    .subtitle { color:var(--muted); margin-bottom:24px; }
+    .card { background:var(--card); border-radius:12px; padding:20px; margin-bottom:16px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(350px, 1fr)); gap:16px; }
+    .check-item { display:flex; align-items:flex-start; gap:12px; padding:12px; background:rgba(0,0,0,0.2); border-radius:8px; margin-bottom:8px; }
+    .check-icon { width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; flex-shrink:0; }
+    .check-icon.pass { background:var(--pass); color:#000; }
+    .check-icon.fail { background:var(--fail); color:#fff; }
+    .check-icon.warn { background:var(--warn); color:#000; }
+    .check-icon.pending { background:var(--muted); color:#000; }
+    .check-icon.info { background:var(--info); color:#fff; }
+    .check-content { flex:1; }
+    .check-title { font-weight:600; margin-bottom:4px; }
+    .check-detail { font-size:13px; color:var(--muted); word-break:break-all; }
+    button { background:linear-gradient(135deg,#22d3ee,#818cf8); color:#0b1224; border:none; padding:12px 20px; border-radius:10px; font-weight:700; cursor:pointer; margin:4px; transition:transform 120ms ease; }
+    button:hover { transform:translateY(-1px); }
+    button:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+    button.secondary { background:#374151; color:var(--text); }
+    button.danger { background:#dc2626; color:#fff; }
+    .btn-group { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+    .log { background:#0a0f1f; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; font-family:ui-monospace,monospace; font-size:13px; max-height:300px; overflow-y:auto; }
+    .log-entry { padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .log-entry:last-child { border-bottom:none; }
+    .log-time { color:var(--muted); }
+    .log-pass { color:var(--pass); }
+    .log-fail { color:var(--fail); }
+    .log-warn { color:var(--warn); }
+    .log-info { color:var(--info); }
+    pre { background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; overflow-x:auto; font-size:12px; margin:8px 0; }
+    .progress { display:flex; gap:8px; margin:16px 0; flex-wrap:wrap; }
+    .progress-step { padding:8px 16px; border-radius:20px; font-size:13px; background:rgba(255,255,255,0.1); }
+    .progress-step.active { background:var(--info); color:#fff; }
+    .progress-step.done { background:var(--pass); color:#000; }
+    .progress-step.error { background:var(--fail); color:#fff; }
+    .summary { display:flex; gap:20px; flex-wrap:wrap; margin:16px 0; }
+    .summary-item { text-align:center; }
+    .summary-value { font-size:32px; font-weight:700; }
+    .summary-label { font-size:13px; color:var(--muted); }
+    .alert { padding:16px; border-radius:8px; margin:12px 0; }
+    .alert-error { background:rgba(239,68,68,0.2); border:1px solid var(--fail); }
+    .alert-warning { background:rgba(245,158,11,0.2); border:1px solid var(--warn); }
+    .alert-success { background:rgba(34,197,94,0.2); border:1px solid var(--pass); }
+    .alert-info { background:rgba(59,130,246,0.2); border:1px solid var(--info); }
+    code { background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Push Notification Test Harness</h1>
+    <p class="subtitle">Comprehensive diagnostic tool to identify why notifications aren't appearing</p>
+
+    <div class="summary" id="summary">
+      <div class="summary-item">
+        <div class="summary-value" id="pass-count">0</div>
+        <div class="summary-label">Passed</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="fail-count">0</div>
+        <div class="summary-label">Failed</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="warn-count">0</div>
+        <div class="summary-label">Warnings</div>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button onclick="runAllTests()">Run All Tests</button>
+      <button class="secondary" onclick="runQuickDiagnosis()">Quick Diagnosis</button>
+      <button class="danger" onclick="resetEverything()">Reset All (Unregister SW & Unsubscribe)</button>
+    </div>
+
+    <div class="grid">
+      <!-- Environment Checks -->
+      <div class="card">
+        <h2>1. Environment Checks</h2>
+        <div id="env-checks"></div>
+        <div class="btn-group">
+          <button class="secondary" onclick="checkEnvironment()">Re-check</button>
+        </div>
+      </div>
+
+      <!-- Permission Checks -->
+      <div class="card">
+        <h2>2. Permission Status</h2>
+        <div id="perm-checks"></div>
+        <div class="btn-group">
+          <button class="secondary" onclick="requestPermission()">Request Permission</button>
+        </div>
+      </div>
+
+      <!-- Service Worker Checks -->
+      <div class="card">
+        <h2>3. Service Worker Status</h2>
+        <div id="sw-checks"></div>
+        <div class="btn-group">
+          <button class="secondary" onclick="checkServiceWorker()">Check SW</button>
+          <button class="secondary" onclick="registerServiceWorker()">Register SW</button>
+          <button class="danger" onclick="unregisterServiceWorker()">Unregister SW</button>
+        </div>
+      </div>
+
+      <!-- Subscription Checks -->
+      <div class="card">
+        <h2>4. Push Subscription</h2>
+        <div id="sub-checks"></div>
+        <pre id="sub-details">No subscription details yet</pre>
+        <div class="btn-group">
+          <button class="secondary" onclick="checkSubscription()">Check Subscription</button>
+          <button class="secondary" onclick="createSubscription()">Subscribe</button>
+          <button class="danger" onclick="removeSubscription()">Unsubscribe</button>
+        </div>
+      </div>
+
+      <!-- Server Communication -->
+      <div class="card">
+        <h2>5. Server Communication</h2>
+        <div id="server-checks"></div>
+        <div class="btn-group">
+          <button class="secondary" onclick="checkServer()">Check Server</button>
+          <button class="secondary" onclick="sendTestPush()">Send Test Push</button>
+        </div>
+      </div>
+
+      <!-- Notification Tests -->
+      <div class="card">
+        <h2>6. Notification Delivery</h2>
+        <div id="notif-checks"></div>
+        <div class="btn-group">
+          <button class="secondary" onclick="testLocalNotification()">Test Local Notification</button>
+          <button class="secondary" onclick="testSWNotification()">Test SW Notification</button>
+          <button class="secondary" onclick="simulatePush()">Simulate Push Event</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="margin:0;">Diagnostic Log</h2>
+        <button class="secondary" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="card" id="recommendations" style="display:none;">
+      <h2>Recommendations</h2>
+      <div id="recommendations-content"></div>
+    </div>
+  </div>
+
+  <script>
+    const publicKey = "{{ public_key }}";
+    let testResults = { pass: 0, fail: 0, warn: 0 };
+
+    // Logging
+    function log(msg, type = 'info') {
+      const logEl = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      const time = new Date().toLocaleTimeString();
+      entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${msg}</span>`;
+      logEl.prepend(entry);
+      console.log(`[${type}] ${msg}`);
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+    }
+
+    // UI helpers
+    function addCheck(containerId, status, title, detail = '') {
+      const container = document.getElementById(containerId);
+      const icons = { pass: '✓', fail: '✗', warn: '!', pending: '?', info: 'i' };
+      const html = `
+        <div class="check-item">
+          <div class="check-icon ${status}">${icons[status]}</div>
+          <div class="check-content">
+            <div class="check-title">${title}</div>
+            ${detail ? `<div class="check-detail">${detail}</div>` : ''}
+          </div>
+        </div>
+      `;
+      container.innerHTML += html;
+      if (status === 'pass') testResults.pass++;
+      if (status === 'fail') testResults.fail++;
+      if (status === 'warn') testResults.warn++;
+      updateSummary();
+    }
+
+    function clearChecks(containerId) {
+      document.getElementById(containerId).innerHTML = '';
+    }
+
+    function updateSummary() {
+      document.getElementById('pass-count').textContent = testResults.pass;
+      document.getElementById('fail-count').textContent = testResults.fail;
+      document.getElementById('warn-count').textContent = testResults.warn;
+    }
+
+    function resetResults() {
+      testResults = { pass: 0, fail: 0, warn: 0 };
+      updateSummary();
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    }
+
+    // Environment checks
+    async function checkEnvironment() {
+      clearChecks('env-checks');
+      log('Checking environment...');
+
+      // HTTPS/localhost check
+      const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      if (isSecure) {
+        addCheck('env-checks', 'pass', 'Secure Context', `Protocol: ${location.protocol}, Host: ${location.hostname}`);
+      } else {
+        addCheck('env-checks', 'fail', 'NOT Secure Context', 'Push API requires HTTPS or localhost. Current: ' + location.origin);
+      }
+
+      // Service Worker support
+      if ('serviceWorker' in navigator) {
+        addCheck('env-checks', 'pass', 'Service Worker API', 'navigator.serviceWorker is available');
+      } else {
+        addCheck('env-checks', 'fail', 'No Service Worker API', 'This browser does not support Service Workers');
+      }
+
+      // Push API support
+      if ('PushManager' in window) {
+        addCheck('env-checks', 'pass', 'Push API', 'PushManager is available');
+      } else {
+        addCheck('env-checks', 'fail', 'No Push API', 'This browser does not support the Push API');
+      }
+
+      // Notification API support
+      if ('Notification' in window) {
+        addCheck('env-checks', 'pass', 'Notification API', 'Notification is available');
+      } else {
+        addCheck('env-checks', 'fail', 'No Notification API', 'This browser does not support the Notification API');
+      }
+
+      // VAPID key check
+      if (publicKey && publicKey.length > 20) {
+        addCheck('env-checks', 'pass', 'VAPID Public Key', `Length: ${publicKey.length} chars`);
+      } else {
+        addCheck('env-checks', 'fail', 'Missing VAPID Key', 'Server did not provide a valid public key');
+      }
+
+      log('Environment check complete');
+    }
+
+    // Permission checks
+    async function checkPermission() {
+      clearChecks('perm-checks');
+      log('Checking notification permission...');
+
+      if (!('Notification' in window)) {
+        addCheck('perm-checks', 'fail', 'Notification API not available', '');
+        return;
+      }
+
+      const perm = Notification.permission;
+      if (perm === 'granted') {
+        addCheck('perm-checks', 'pass', 'Permission Granted', 'Notifications are allowed');
+      } else if (perm === 'denied') {
+        addCheck('perm-checks', 'fail', 'Permission Denied', 'User blocked notifications. Must be reset in browser settings.');
+      } else {
+        addCheck('perm-checks', 'warn', 'Permission Not Requested', 'Current state: ' + perm + '. Click "Request Permission" to ask user.');
+      }
+
+      log('Permission status: ' + perm, perm === 'granted' ? 'pass' : (perm === 'denied' ? 'fail' : 'warn'));
+    }
+
+    async function requestPermission() {
+      log('Requesting notification permission...');
+      try {
+        const result = await Notification.requestPermission();
+        log('Permission result: ' + result, result === 'granted' ? 'pass' : 'fail');
+        checkPermission();
+      } catch (err) {
+        log('Permission request failed: ' + err.message, 'fail');
+      }
+    }
+
+    // Service Worker checks
+    async function checkServiceWorker() {
+      clearChecks('sw-checks');
+      log('Checking service worker...');
+
+      if (!('serviceWorker' in navigator)) {
+        addCheck('sw-checks', 'fail', 'Service Worker not supported', '');
+        return;
+      }
+
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+
+        if (registrations.length === 0) {
+          addCheck('sw-checks', 'warn', 'No Service Workers Registered', 'Click "Register SW" to register the push service worker');
+          return;
+        }
+
+        for (const reg of registrations) {
+          const state = reg.active ? 'active' : (reg.waiting ? 'waiting' : (reg.installing ? 'installing' : 'unknown'));
+          addCheck('sw-checks', state === 'active' ? 'pass' : 'warn',
+            `Service Worker: ${state}`,
+            `Scope: ${reg.scope}`);
+
+          // Check if this is our SW
+          if (reg.scope.includes(location.origin)) {
+            addCheck('sw-checks', 'pass', 'SW Scope matches origin', '');
+          }
+        }
+
+        // Check controller
+        if (navigator.serviceWorker.controller) {
+          addCheck('sw-checks', 'pass', 'Page is controlled by SW',
+            'Script: ' + (navigator.serviceWorker.controller.scriptURL || 'unknown'));
+        } else {
+          addCheck('sw-checks', 'warn', 'Page NOT controlled by SW',
+            'SW is registered but not controlling this page yet. Try refreshing.');
+        }
+
+        // Check ready state
+        const ready = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+        ]).catch(() => null);
+
+        if (ready) {
+          addCheck('sw-checks', 'pass', 'navigator.serviceWorker.ready resolved', '');
+        } else {
+          addCheck('sw-checks', 'warn', 'SW ready timeout', 'Service worker may not be fully active');
+        }
+
+      } catch (err) {
+        addCheck('sw-checks', 'fail', 'Error checking SW', err.message);
+        log('SW check error: ' + err.message, 'fail');
+      }
+    }
+
+    async function registerServiceWorker() {
+      log('Registering service worker...');
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        log('SW registered, waiting for ready...', 'info');
+        await navigator.serviceWorker.ready;
+        log('SW is ready!', 'pass');
+        checkServiceWorker();
+      } catch (err) {
+        log('SW registration failed: ' + err.message, 'fail');
+      }
+    }
+
+    async function unregisterServiceWorker() {
+      log('Unregistering all service workers...');
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+          log('Unregistered: ' + reg.scope, 'info');
+        }
+        log('All service workers unregistered', 'pass');
+        checkServiceWorker();
+      } catch (err) {
+        log('Unregister failed: ' + err.message, 'fail');
+      }
+    }
+
+    // Subscription checks
+    async function checkSubscription() {
+      clearChecks('sub-checks');
+      log('Checking push subscription...');
+
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) {
+          addCheck('sub-checks', 'fail', 'No SW registration', 'Register service worker first');
+          return;
+        }
+
+        const sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          addCheck('sub-checks', 'warn', 'No Push Subscription', 'Click "Subscribe" to create one');
+          document.getElementById('sub-details').textContent = 'No subscription';
+          return;
+        }
+
+        addCheck('sub-checks', 'pass', 'Push Subscription Exists', '');
+
+        // Check endpoint
+        if (sub.endpoint) {
+          const domain = new URL(sub.endpoint).hostname;
+          addCheck('sub-checks', 'pass', 'Endpoint Valid', domain);
+        } else {
+          addCheck('sub-checks', 'fail', 'No Endpoint', '');
+        }
+
+        // Check keys
+        const json = sub.toJSON();
+        if (json.keys && json.keys.p256dh && json.keys.auth) {
+          addCheck('sub-checks', 'pass', 'Encryption Keys Present',
+            `p256dh: ${json.keys.p256dh.substring(0, 20)}...`);
+        } else {
+          addCheck('sub-checks', 'fail', 'Missing Encryption Keys', 'Subscription is invalid');
+        }
+
+        // Check expiration
+        if (sub.expirationTime) {
+          const exp = new Date(sub.expirationTime);
+          const isExpired = exp < new Date();
+          addCheck('sub-checks', isExpired ? 'fail' : 'info',
+            'Expiration Time', exp.toISOString() + (isExpired ? ' (EXPIRED!)' : ''));
+        } else {
+          addCheck('sub-checks', 'info', 'No Expiration Time', 'Subscription does not expire');
+        }
+
+        document.getElementById('sub-details').textContent = JSON.stringify(json, null, 2);
+        log('Subscription found: ' + sub.endpoint.substring(0, 50) + '...', 'pass');
+
+      } catch (err) {
+        addCheck('sub-checks', 'fail', 'Error checking subscription', err.message);
+        log('Subscription check error: ' + err.message, 'fail');
+      }
+    }
+
+    async function createSubscription() {
+      log('Creating push subscription...');
+
+      try {
+        // Ensure permission
+        if (Notification.permission !== 'granted') {
+          const perm = await Notification.requestPermission();
+          if (perm !== 'granted') {
+            log('Permission denied, cannot subscribe', 'fail');
+            return;
+          }
+        }
+
+        // Ensure SW
+        let reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) {
+          log('Registering SW first...', 'info');
+          reg = await navigator.serviceWorker.register('/sw.js');
+          await navigator.serviceWorker.ready;
+        }
+
+        // Subscribe
+        log('Calling pushManager.subscribe()...', 'info');
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
+
+        log('Subscription created!', 'pass');
+
+        // Send to server
+        log('Sending subscription to server...', 'info');
+        const res = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub.toJSON() })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          log('Subscription stored on server, client ID: ' + data.id, 'pass');
+        } else {
+          log('Server rejected subscription: ' + res.status, 'fail');
+        }
+
+        checkSubscription();
+
+      } catch (err) {
+        log('Subscription failed: ' + err.message, 'fail');
+        if (err.message.includes('applicationServerKey')) {
+          log('VAPID key issue - check that public key is correct', 'warn');
+        }
+      }
+    }
+
+    async function removeSubscription() {
+      log('Removing push subscription...');
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) return log('No SW registration', 'warn');
+
+        const sub = await reg.pushManager.getSubscription();
+        if (!sub) return log('No subscription to remove', 'warn');
+
+        await sub.unsubscribe();
+        log('Subscription removed', 'pass');
+        checkSubscription();
+      } catch (err) {
+        log('Unsubscribe failed: ' + err.message, 'fail');
+      }
+    }
+
+    // Server checks
+    async function checkServer() {
+      clearChecks('server-checks');
+      log('Checking server communication...');
+
+      // Health check
+      try {
+        const res = await fetch('/health');
+        if (res.ok) {
+          const data = await res.json();
+          addCheck('server-checks', 'pass', 'Server Health Check', data.status || 'OK');
+        } else {
+          addCheck('server-checks', 'fail', 'Health check failed', 'Status: ' + res.status);
+        }
+      } catch (err) {
+        addCheck('server-checks', 'fail', 'Server unreachable', err.message);
+      }
+
+      // Check clients endpoint
+      try {
+        const res = await fetch('/api/clients');
+        if (res.ok) {
+          const clients = await res.json();
+          addCheck('server-checks', 'pass', 'Clients API', clients.length + ' client(s) registered');
+
+          // Check if current subscription is registered
+          const reg = await navigator.serviceWorker.getRegistration();
+          const sub = reg && await reg.pushManager.getSubscription();
+          if (sub) {
+            const found = clients.find(c => c.endpoint === sub.endpoint);
+            if (found) {
+              addCheck('server-checks', 'pass', 'This browser is registered', 'Client ID: ' + found.id);
+            } else {
+              addCheck('server-checks', 'warn', 'This browser NOT in server list', 'Subscription exists locally but not on server');
+            }
+          }
+        } else {
+          addCheck('server-checks', 'fail', 'Clients API error', 'Status: ' + res.status);
+        }
+      } catch (err) {
+        addCheck('server-checks', 'fail', 'Clients API unreachable', err.message);
+      }
+
+      log('Server check complete');
+    }
+
+    async function sendTestPush() {
+      log('Sending test push notification via server...');
+
+      try {
+        // First ensure we're subscribed
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = reg && await reg.pushManager.getSubscription();
+
+        if (!sub) {
+          log('No subscription - subscribe first!', 'fail');
+          return;
+        }
+
+        // Get our client ID
+        const clientsRes = await fetch('/api/clients');
+        const clients = await clientsRes.json();
+        const ourClient = clients.find(c => c.endpoint === sub.endpoint);
+
+        if (!ourClient) {
+          log('Browser not registered on server - subscribe again', 'fail');
+          return;
+        }
+
+        log('Sending push to client ID ' + ourClient.id + '...', 'info');
+
+        // Send push
+        const formData = new FormData();
+        formData.append('title', 'Test Push - ' + new Date().toLocaleTimeString());
+        formData.append('body', 'If you see this, push notifications are working!');
+        formData.append('url', '/test_harness');
+        formData.append('target', ourClient.id.toString());
+
+        const res = await fetch('/api/send', {
+          method: 'POST',
+          body: formData,
+          redirect: 'manual'
+        });
+
+        if (res.status === 303 || res.ok) {
+          log('Push sent successfully! Check for notification...', 'pass');
+          addCheck('server-checks', 'info', 'Push sent', 'Notification should appear shortly');
+        } else {
+          const text = await res.text();
+          log('Push send failed: ' + res.status + ' - ' + text, 'fail');
+        }
+
+      } catch (err) {
+        log('Send test push failed: ' + err.message, 'fail');
+      }
+    }
+
+    // Notification tests
+    async function checkNotifications() {
+      clearChecks('notif-checks');
+      log('Checking notification capability...');
+
+      if (Notification.permission === 'granted') {
+        addCheck('notif-checks', 'pass', 'Permission OK', 'Can show notifications');
+      } else {
+        addCheck('notif-checks', 'fail', 'No Permission', 'Cannot show notifications without permission');
+        return;
+      }
+
+      // Check SW has showNotification
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg && typeof reg.showNotification === 'function') {
+          addCheck('notif-checks', 'pass', 'SW showNotification available', '');
+        } else if (reg) {
+          addCheck('notif-checks', 'warn', 'SW exists but showNotification not found', '');
+        } else {
+          addCheck('notif-checks', 'warn', 'No SW registration', '');
+        }
+      } catch (err) {
+        addCheck('notif-checks', 'fail', 'Error checking SW', err.message);
+      }
+    }
+
+    async function testLocalNotification() {
+      log('Testing local notification (not via SW)...');
+
+      if (Notification.permission !== 'granted') {
+        log('Permission not granted', 'fail');
+        return;
+      }
+
+      try {
+        const n = new Notification('Local Test - ' + new Date().toLocaleTimeString(), {
+          body: 'This is a local notification (not via service worker)',
+          icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>'
+        });
+
+        n.onclick = () => {
+          log('Local notification clicked!', 'pass');
+          n.close();
+        };
+
+        log('Local notification shown - if you do not see it, check system notification settings', 'pass');
+        addCheck('notif-checks', 'pass', 'Local notification shown', 'Check your system tray/notification center');
+
+      } catch (err) {
+        log('Local notification failed: ' + err.message, 'fail');
+        addCheck('notif-checks', 'fail', 'Local notification failed', err.message);
+      }
+    }
+
+    async function testSWNotification() {
+      log('Testing notification via Service Worker...');
+
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) {
+          log('No SW registration', 'fail');
+          return;
+        }
+
+        await reg.showNotification('SW Test - ' + new Date().toLocaleTimeString(), {
+          body: 'This notification was shown via service worker registration',
+          icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📣</text></svg>',
+          data: { url: '/test_harness' }
+        });
+
+        log('SW notification shown!', 'pass');
+        addCheck('notif-checks', 'pass', 'SW notification shown', 'Check your system tray');
+
+      } catch (err) {
+        log('SW notification failed: ' + err.message, 'fail');
+        addCheck('notif-checks', 'fail', 'SW notification failed', err.message);
+      }
+    }
+
+    async function simulatePush() {
+      log('Simulating push event via postMessage...');
+
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg || !reg.active) {
+          log('No active SW', 'fail');
+          return;
+        }
+
+        reg.active.postMessage({
+          type: 'simulate-push',
+          payload: {
+            title: 'Simulated Push - ' + new Date().toLocaleTimeString(),
+            body: 'This simulates a push event received by the service worker',
+            url: '/test_harness'
+          }
+        });
+
+        log('Simulate message sent to SW - notification should appear', 'pass');
+        addCheck('notif-checks', 'pass', 'Simulate push sent', 'If notification appears, SW push handler works');
+
+      } catch (err) {
+        log('Simulate push failed: ' + err.message, 'fail');
+      }
+    }
+
+    // Main test runners
+    async function runAllTests() {
+      log('Starting comprehensive test suite...', 'info');
+      resetResults();
+
+      await checkEnvironment();
+      await checkPermission();
+      await checkServiceWorker();
+      await checkSubscription();
+      await checkServer();
+      await checkNotifications();
+
+      generateRecommendations();
+      log('All tests complete!', 'info');
+    }
+
+    async function runQuickDiagnosis() {
+      log('Running quick diagnosis...', 'info');
+      resetResults();
+
+      // Quick checks
+      const issues = [];
+
+      // 1. Permission
+      if (!('Notification' in window) || Notification.permission !== 'granted') {
+        issues.push('Notification permission not granted');
+      }
+
+      // 2. SW
+      const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
+      if (!reg || !reg.active) {
+        issues.push('Service worker not active');
+      }
+
+      // 3. Subscription
+      const sub = reg && await reg.pushManager.getSubscription().catch(() => null);
+      if (!sub) {
+        issues.push('No push subscription');
+      }
+
+      // 4. Server
+      try {
+        const clients = await fetch('/api/clients').then(r => r.json());
+        if (sub && !clients.find(c => c.endpoint === sub.endpoint)) {
+          issues.push('Subscription not registered on server');
+        }
+      } catch {
+        issues.push('Cannot reach server');
+      }
+
+      if (issues.length === 0) {
+        log('No obvious issues found! Try "Run All Tests" for detailed analysis.', 'pass');
+      } else {
+        log('Found ' + issues.length + ' issue(s):', 'warn');
+        issues.forEach(i => log('  - ' + i, 'fail'));
+      }
+
+      await runAllTests();
+    }
+
+    async function resetEverything() {
+      if (!confirm('This will unregister all service workers and remove subscriptions. Continue?')) {
+        return;
+      }
+
+      log('Resetting everything...', 'warn');
+
+      // Unsubscribe
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          const sub = await reg.pushManager.getSubscription();
+          if (sub) await sub.unsubscribe();
+        }
+      } catch {}
+
+      // Unregister all SWs
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          await reg.unregister();
+        }
+      } catch {}
+
+      log('Reset complete. Refresh the page and re-subscribe.', 'pass');
+
+      setTimeout(() => location.reload(), 2000);
+    }
+
+    function generateRecommendations() {
+      const container = document.getElementById('recommendations');
+      const content = document.getElementById('recommendations-content');
+
+      if (testResults.fail === 0 && testResults.warn === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'block';
+      let html = '';
+
+      if (testResults.fail > 0) {
+        html += `<div class="alert alert-error">
+          <strong>Critical Issues Found (${testResults.fail})</strong>
+          <p>Fix these issues first before push notifications can work.</p>
+        </div>`;
+      }
+
+      if (testResults.warn > 0) {
+        html += `<div class="alert alert-warning">
+          <strong>Warnings (${testResults.warn})</strong>
+          <p>These may prevent notifications from appearing.</p>
+        </div>`;
+      }
+
+      html += `<h3>Common Fixes:</h3>
+      <ul>
+        <li><strong>Permission denied:</strong> Reset in browser settings (chrome://settings/content/notifications)</li>
+        <li><strong>SW not active:</strong> Click "Register SW" and refresh the page</li>
+        <li><strong>No subscription:</strong> Click "Subscribe" to create a push subscription</li>
+        <li><strong>Not on server:</strong> Re-subscribe to register with the server</li>
+        <li><strong>Notifications not showing:</strong> Check OS notification settings (Do Not Disturb, Focus modes)</li>
+      </ul>`;
+
+      content.innerHTML = html;
+    }
+
+    // Listen for push messages from SW
+    navigator.serviceWorker.addEventListener('message', evt => {
+      if (evt.data?.type === 'push-received') {
+        log('Received push message from SW: ' + evt.data.data.title, 'pass');
+        addCheck('notif-checks', 'pass', 'Push received by page', 'SW postMessage working');
+      }
+    });
+
+    // Initial checks on load
+    window.addEventListener('load', () => {
+      log('Test harness loaded. Click "Run All Tests" to begin.', 'info');
+      checkEnvironment();
+      checkPermission();
+    });
+  </script>
+</body>
+</html>

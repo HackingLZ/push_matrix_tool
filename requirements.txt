@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pywebpush
+jinja2
+python-multipart
+cryptography
+pytest
+httpx

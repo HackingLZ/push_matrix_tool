@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0f172a; --card:#0b1224; --text:#e2e8f0; --muted:#94a3b8; --accent:#22d3ee; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Space Grotesk','Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .container { text-align:center; padding:20px; }
+    button { background:linear-gradient(135deg,#22d3ee,#818cf8); color:#0b1224; border:none; padding:16px 32px; border-radius:14px; font-weight:700; font-size:18px; cursor:pointer; transition:transform 120ms ease; font-family:inherit; }
+    button:hover { transform:translateY(-2px); }
+    button:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+    .thanks { font-size:28px; font-weight:600; margin-bottom:16px; }
+    .client-id { font-family:ui-monospace,monospace; background:rgba(255,255,255,0.08); padding:12px 20px; border-radius:10px; font-size:14px; color:var(--accent); margin-top:12px; display:inline-block; }
+    .error { color:#f87171; margin-top:12px; }
+    .muted { color:var(--muted); font-size:14px; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="container" id="content">
+    <button id="register-btn" onclick="register()">Register</button>
+  </div>
+
+  <script>
+    const publicKey = "{{ public_key }}";
+    const redirectUrl = "{{ redirect_url }}";
+    const CLIENT_ID_KEY = "push_demo_client_id";
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const rawData = atob(base64);
+      return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+    }
+
+    function getClientId() {
+      let clientId = localStorage.getItem(CLIENT_ID_KEY);
+      if (!clientId) {
+        clientId = crypto.randomUUID ? crypto.randomUUID() :
+          'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+          });
+        localStorage.setItem(CLIENT_ID_KEY, clientId);
+      }
+      return clientId;
+    }
+
+    function getDeviceInfo() {
+      const ua = navigator.userAgent;
+      let deviceType = "desktop";
+      if (/Mobi|Android|iPhone|iPad|iPod/i.test(ua)) {
+        deviceType = /iPad|Tablet/i.test(ua) ? "tablet" : "mobile";
+      }
+      let os = "Unknown";
+      if (/Windows/i.test(ua)) os = "Windows";
+      else if (/Mac OS X|macOS/i.test(ua)) os = "macOS";
+      else if (/Linux/i.test(ua)) os = "Linux";
+      else if (/Android/i.test(ua)) os = "Android";
+      else if (/iPhone|iPad|iPod/i.test(ua)) os = "iOS";
+
+      let browser = "Unknown";
+      if (/Edg\//i.test(ua)) browser = "Edge";
+      else if (/Chrome/i.test(ua)) browser = "Chrome";
+      else if (/Firefox/i.test(ua)) browser = "Firefox";
+      else if (/Safari/i.test(ua)) browser = "Safari";
+
+      return {
+        deviceType, os, browser,
+        screenRes: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: navigator.language,
+        userAgent: ua,
+      };
+    }
+
+    function showThanks(clientId) {
+      // Check if we should redirect to a custom URL
+      if (redirectUrl && redirectUrl.trim()) {
+        document.getElementById('content').innerHTML = `
+          <div class="thanks">Thanks!</div>
+          <div class="muted">Redirecting...</div>
+        `;
+        setTimeout(() => {
+          window.location.href = redirectUrl;
+        }, 1000);
+        return;
+      }
+
+      // Default: show thank you with client ID
+      document.getElementById('content').innerHTML = `
+        <div class="thanks">Thanks!</div>
+        <div class="muted">Your unique ID</div>
+        <div class="client-id">${clientId}</div>
+      `;
+    }
+
+    function showError(message) {
+      document.getElementById('content').innerHTML = `
+        <div class="error">${message}</div>
+        <button onclick="location.reload()" style="margin-top:16px;">Try Again</button>
+      `;
+    }
+
+    async function register() {
+      const btn = document.getElementById('register-btn');
+      btn.disabled = true;
+      btn.textContent = 'Registering...';
+
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+        showError("Push notifications not supported in this browser");
+        return;
+      }
+
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") {
+          showError("Notification permission denied");
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.register("/sw.js");
+        await navigator.serviceWorker.ready;
+
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+
+        const clientId = getClientId();
+        const deviceInfo = getDeviceInfo();
+
+        const res = await fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            clientId: clientId,
+            deviceInfo: deviceInfo,
+          }),
+        });
+
+        if (!res.ok) throw new Error("Server rejected subscription");
+
+        const data = await res.json();
+        showThanks(clientId);
+
+        // Start heartbeat
+        setInterval(() => {
+          fetch("/api/heartbeat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clientId, deviceInfo: getDeviceInfo() }),
+          }).catch(() => {});
+        }, 30000);
+
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    // Check if already registered
+    async function checkExisting() {
+      if (Notification.permission === "granted") {
+        try {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            const sub = await reg.pushManager.getSubscription();
+            if (sub) {
+              const clientId = getClientId();
+              // Re-register to update last_seen
+              await fetch("/api/subscribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  subscription: sub.toJSON(),
+                  clientId: clientId,
+                  deviceInfo: getDeviceInfo(),
+                }),
+              });
+              showThanks(clientId);
+            }
+          }
+        } catch (e) {
+          // Ignore errors, just show register button
+        }
+      }
+    }
+
+    checkExisting();
+  </script>
+</body>
+</html>

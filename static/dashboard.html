@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Demo · Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0f172a; --card:#0b1224; --text:#e2e8f0; --muted:#94a3b8; --accent:#22d3ee; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Space Grotesk','Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    .wrap { max-width:1200px; margin:0 auto; padding:48px 22px 72px; display:grid; gap:20px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    h1 { margin:0; font-size:30px; letter-spacing:-.3px; }
+    .card { background:var(--card); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
+    .grid { display:grid; gap:14px; }
+    .two { grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); }
+    label { color:var(--muted); font-size:14px; margin-bottom:4px; display:block; }
+    input, textarea, select { width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); color:var(--text); font-size:15px; }
+    button { background:linear-gradient(135deg,#22d3ee,#818cf8); color:#0b1224; border:none; padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; transition:transform 120ms ease; }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:#1f2937; color:var(--text); box-shadow:none; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:10px; border-bottom:1px solid rgba(255,255,255,0.06); text-align:left; vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    tr:hover td { background:rgba(255,255,255,0.02); }
+    .muted { color:var(--muted); }
+    code { background:rgba(255,255,255,0.08); padding:4px 6px; border-radius:6px; font-size:13px; }
+    .client-card { display:grid; gap:8px; }
+    .client-header { display:flex; align-items:center; gap:10px; }
+    .device-icon { font-size:24px; }
+    .client-name { font-weight:600; font-size:15px; }
+    .client-meta { display:flex; flex-wrap:wrap; gap:6px; }
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; font-size:12px; background:rgba(255,255,255,0.06); }
+    .badge.online { background:rgba(34,197,94,0.2); color:#4ade80; }
+    .badge.recent { background:rgba(234,179,8,0.2); color:#facc15; }
+    .badge.offline { background:rgba(239,68,68,0.15); color:#f87171; }
+    .badge.desktop { background:rgba(59,130,246,0.15); color:#60a5fa; }
+    .badge.mobile { background:rgba(168,85,247,0.15); color:#c084fc; }
+    .badge.tablet { background:rgba(236,72,153,0.15); color:#f472b6; }
+    .client-details { font-size:12px; color:var(--muted); display:grid; gap:2px; }
+    .client-id-short { font-family:monospace; font-size:11px; color:var(--muted); }
+    .detail-row { display:flex; gap:16px; flex-wrap:wrap; }
+    .detail-item { display:flex; gap:4px; }
+    .detail-label { color:#64748b; }
+    .client-expanded { margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06); }
+    .expanded-section { margin-bottom:12px; }
+    .expanded-title { font-size:11px; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+    .expanded-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:4px 12px; }
+    .expanded-item { font-size:12px; color:var(--muted); }
+    .expanded-item .detail-label { color:#64748b; }
+    .expanded-ua { font-size:10px; color:#64748b; word-break:break-all; font-family:ui-monospace,monospace; background:rgba(0,0,0,0.2); padding:8px; border-radius:6px; }
+    .expand-icon { transition:transform 0.2s; }
+    .expand-icon.open { transform:rotate(180deg); }
+    .client-checkbox { width:18px; height:18px; cursor:pointer; accent-color:var(--accent); }
+    .selection-bar { background:rgba(34,211,238,0.1); border:1px solid rgba(34,211,238,0.3); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .selection-count { font-weight:600; color:var(--accent); }
+    .btn-sm { padding:6px 12px; font-size:12px; border-radius:8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Push Demo · Dashboard</h1>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="secondary" onclick="location.href='/register'">Register</button>
+        <button class="secondary" onclick="location.href='/templates'">Templates</button>
+        <button class="secondary" onclick="location.href='/debug'">Debug</button>
+        <button class="secondary" onclick="location.href='/admin'">Admin</button>
+      </div>
+    </header>
+
+    <div class="grid two">
+      <div class="card grid">
+        <strong>Send a notification</strong>
+        <form class="grid" method="post" action="/api/send">
+          <div>
+            <label for="title">Title</label>
+            <input id="title" name="title" required placeholder="Update available">
+          </div>
+          <div>
+            <label for="body">Body</label>
+            <textarea id="body" name="body" rows="2" placeholder="Tap to open the release notes"></textarea>
+          </div>
+          <div>
+            <label for="url">URL</label>
+            <input id="url" name="url" value="https://example.com" required>
+          </div>
+          <div>
+            <label for="icon">Icon URL (optional)</label>
+            <input id="icon" name="icon" placeholder="https://example.com/icon.png">
+          </div>
+          <div>
+            <label for="target">Target</label>
+            <select id="target" name="target">
+              <option value="all">All clients</option>
+              <option value="selected">Selected clients only</option>
+              {% for cl in clients %}
+              <option value="{{ cl['id'] }}">Client {{ cl['id'] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <input type="hidden" id="selected-clients" name="selected_clients" value="">
+          <div>
+            <label for="template">Quick Templates</label>
+            <select id="template" onchange="fillTemplate(this.value)">
+              <option value="">-- Select a template --</option>
+              <optgroup label="Custom Templates" id="custom-templates-group">
+                <!-- Loaded dynamically -->
+              </optgroup>
+              <optgroup label="Software Updates">
+                <option value="browser_update">Browser Update</option>
+                <option value="software_update">Software Update Required</option>
+                <option value="app_update">App Update Available</option>
+              </optgroup>
+              <optgroup label="Security Alerts">
+                <option value="antivirus_outdated">Antivirus Outdated</option>
+                <option value="security_scan">Security Scan Complete</option>
+                <option value="suspicious_login">Suspicious Login</option>
+              </optgroup>
+              <optgroup label="Password & Account">
+                <option value="password_expired">Password Expiring</option>
+                <option value="password_changed">Password Changed</option>
+                <option value="mfa_reminder">MFA Reminder</option>
+              </optgroup>
+              <optgroup label="Session & Access">
+                <option value="session_expiring">Session Expiring</option>
+                <option value="session_expired">Session Expired</option>
+              </optgroup>
+              <optgroup label="Storage & Quota">
+                <option value="storage_warning">Storage Warning</option>
+                <option value="quota_exceeded">Quota Exceeded</option>
+              </optgroup>
+              <optgroup label="Subscription & Billing">
+                <option value="trial_ending">Trial Ending</option>
+                <option value="payment_failed">Payment Failed</option>
+                <option value="subscription_renewed">Subscription Renewed</option>
+              </optgroup>
+              <optgroup label="Collaboration">
+                <option value="shared_with_you">Document Shared</option>
+                <option value="comment_mention">Mentioned in Comment</option>
+              </optgroup>
+              <optgroup label="System Status">
+                <option value="maintenance">Scheduled Maintenance</option>
+                <option value="service_restored">Service Restored</option>
+              </optgroup>
+            </select>
+          </div>
+          <div>
+            <label for="schedule-time">Schedule (optional)</label>
+            <input type="datetime-local" id="schedule-time" name="schedule_time">
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="submit">Send push</button>
+            <button type="button" class="secondary" onclick="scheduleNotification()">Schedule</button>
+            <button type="button" class="secondary" onclick="cloneToNew()">Clone</button>
+          </div>
+        </form>
+        <div class="muted">Active clients: {{ clients|length }} · VAPID key: <code>{{ public_key }}</code></div>
+      </div>
+
+      <div class="card grid">
+        <strong>Maintenance</strong>
+        <p class="muted" style="margin:0;">Keep your subscription list healthy.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="secondary" onclick="cleanupStale()">Cleanup stale (30d+)</button>
+          <button class="secondary" onclick="validateAll()">Validate all</button>
+        </div>
+        <div id="maintenance-result" class="muted"></div>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div class="card grid">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>Scheduled Notifications</strong>
+          <button class="btn-sm secondary" onclick="loadScheduled()">Refresh</button>
+        </div>
+        <div id="scheduled-list" class="muted">Loading...</div>
+      </div>
+
+      <div class="card grid">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>Notification History</strong>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-sm secondary" onclick="loadHistory()">Refresh</button>
+            <button class="btn-sm secondary" onclick="clearHistory()">Clear</button>
+          </div>
+        </div>
+        <div id="history-list" class="muted" style="max-height:300px;overflow-y:auto;">Loading...</div>
+      </div>
+    </div>
+
+    <div class="card grid">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <strong>Export Clients</strong>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-sm secondary" onclick="exportClients('json')">Export JSON</button>
+          <button class="btn-sm secondary" onclick="exportClients('csv')">Export CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card grid">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <strong>Registered clients</strong>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span class="muted">{{ clients|length }} client(s)</span>
+        </div>
+      </div>
+      <div id="selection-bar" class="selection-bar" style="display:none;">
+        <span class="selection-count"><span id="selected-count">0</span> selected</span>
+        <button type="button" class="btn-sm" onclick="sendToSelected()">Send to selected</button>
+        <button type="button" class="btn-sm secondary" onclick="deleteSelected()">Delete selected</button>
+        <button type="button" class="btn-sm secondary" onclick="clearSelection()">Clear</button>
+        <button type="button" class="btn-sm secondary" onclick="selectAll()">Select all</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th style="width:30px;"><input type="checkbox" class="client-checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)"></th><th style="width:50%">Device</th><th>Status</th><th>Clicks</th><th>Last seen</th></tr>
+        </thead>
+        <tbody>
+        {% for cl in clients %}
+          {% set di = cl['device_info'] or {} %}
+          {% set device_type = di.get('deviceType', 'desktop') %}
+          {% set icon = '🖥️' if device_type == 'desktop' else ('📱' if device_type == 'mobile' else '📱') %}
+          {% set conn = di.get('connection', {}) if di.get('connection') is mapping else {} %}
+          {% set gpu = di.get('gpu', {}) if di.get('gpu') is mapping else {} %}
+          {% set battery = di.get('battery', {}) if di.get('battery') is mapping else {} %}
+          {% set storage = di.get('storage', {}) if di.get('storage') is mapping else {} %}
+          {% set media = di.get('mediaDevices', {}) if di.get('mediaDevices') is mapping else {} %}
+          {% set perms = di.get('permissions', {}) if di.get('permissions') is mapping else {} %}
+          {% set uaData = di.get('uaData', {}) if di.get('uaData') is mapping else {} %}
+          <tr data-client-id="{{ cl['client_id'] or '' }}" data-id="{{ cl['id'] }}">
+            <td style="vertical-align:middle;">
+              <input type="checkbox" class="client-checkbox client-select" data-id="{{ cl['id'] }}" onchange="updateSelection()">
+            </td>
+            <td>
+              <div class="client-card">
+                <div class="client-header" onclick="toggleExpand(this)" style="cursor:pointer;">
+                  <span class="device-icon">{{ icon }}</span>
+                  <div style="flex:1;">
+                    <div class="client-name">
+                      {{ di.get('browser', 'Unknown') }}{% if di.get('browserVersion') %} {{ di.get('browserVersion') }}{% endif %} on {{ di.get('os', 'Unknown') }}{% if di.get('osVersion') %} {{ di.get('osVersion') }}{% endif %}
+                    </div>
+                    <div class="client-id-short">
+                      ID: {{ cl['id'] }}{% if cl['client_id'] %} · {{ cl['client_id'][:8] }}...{% endif %}
+                    </div>
+                  </div>
+                  <span class="expand-icon" style="color:var(--muted);font-size:12px;">▼</span>
+                </div>
+                <div class="client-meta">
+                  <span class="badge {{ device_type }}">{{ device_type }}</span>
+                  {% if di.get('screenRes') %}<span class="badge">{{ di.get('screenRes') }}</span>{% endif %}
+                  {% if di.get('language') %}<span class="badge">{{ di.get('language') }}</span>{% endif %}
+                  {% if conn.get('type') and conn.get('type') != 'unknown' %}<span class="badge">{{ conn.get('type') }}</span>{% endif %}
+                </div>
+
+                <!-- Expandable details section -->
+                <div class="client-expanded" style="display:none;">
+                  <div class="expanded-section">
+                    <div class="expanded-title">System</div>
+                    <div class="expanded-grid">
+                      <div class="expanded-item"><span class="detail-label">Platform:</span> {{ di.get('platform', 'Unknown') }}</div>
+                      {% if di.get('cpuCores') %}<div class="expanded-item"><span class="detail-label">CPU Cores:</span> {{ di.get('cpuCores') }}</div>{% endif %}
+                      {% if di.get('deviceMemory') %}<div class="expanded-item"><span class="detail-label">RAM:</span> {{ di.get('deviceMemory') }}GB</div>{% endif %}
+                      {% if uaData.get('architecture') %}<div class="expanded-item"><span class="detail-label">Arch:</span> {{ uaData.get('architecture') }}{% if uaData.get('bitness') %} ({{ uaData.get('bitness') }}-bit){% endif %}</div>{% endif %}
+                      {% if gpu.get('renderer') %}<div class="expanded-item"><span class="detail-label">GPU:</span> {{ gpu.get('renderer')[:50] }}{% if gpu.get('renderer')|length > 50 %}...{% endif %}</div>{% endif %}
+                    </div>
+                  </div>
+
+                  <div class="expanded-section">
+                    <div class="expanded-title">Display</div>
+                    <div class="expanded-grid">
+                      <div class="expanded-item"><span class="detail-label">Screen:</span> {{ di.get('screenRes', 'Unknown') }}</div>
+                      {% if di.get('screenAvail') %}<div class="expanded-item"><span class="detail-label">Available:</span> {{ di.get('screenAvail') }}</div>{% endif %}
+                      {% if di.get('viewport') %}<div class="expanded-item"><span class="detail-label">Viewport:</span> {{ di.get('viewport') }}</div>{% endif %}
+                      {% if di.get('pixelRatio') %}<div class="expanded-item"><span class="detail-label">Pixel Ratio:</span> {{ di.get('pixelRatio') }}x</div>{% endif %}
+                      {% if di.get('colorDepth') %}<div class="expanded-item"><span class="detail-label">Color Depth:</span> {{ di.get('colorDepth') }}-bit</div>{% endif %}
+                      <div class="expanded-item"><span class="detail-label">Touch:</span> {% if di.get('touchSupport') %}Yes ({{ di.get('maxTouchPoints', 0) }} points){% else %}No{% endif %}</div>
+                    </div>
+                  </div>
+
+                  <div class="expanded-section">
+                    <div class="expanded-title">Network</div>
+                    <div class="expanded-grid">
+                      <div class="expanded-item"><span class="detail-label">IP:</span> {{ cl['ip'] or 'Unknown' }}</div>
+                      {% if conn.get('type') %}<div class="expanded-item"><span class="detail-label">Type:</span> {{ conn.get('type') }}</div>{% endif %}
+                      {% if conn.get('downlink') %}<div class="expanded-item"><span class="detail-label">Downlink:</span> {{ conn.get('downlink') }} Mbps</div>{% endif %}
+                      {% if conn.get('rtt') %}<div class="expanded-item"><span class="detail-label">RTT:</span> {{ conn.get('rtt') }}ms</div>{% endif %}
+                      {% if conn.get('saveData') %}<div class="expanded-item"><span class="detail-label">Data Saver:</span> On</div>{% endif %}
+                    </div>
+                  </div>
+
+                  <div class="expanded-section">
+                    <div class="expanded-title">Locale</div>
+                    <div class="expanded-grid">
+                      <div class="expanded-item"><span class="detail-label">Language:</span> {{ di.get('language', 'Unknown') }}</div>
+                      {% if di.get('languages') %}<div class="expanded-item"><span class="detail-label">Languages:</span> {{ di.get('languages')|join(', ') }}</div>{% endif %}
+                      <div class="expanded-item"><span class="detail-label">Timezone:</span> {{ di.get('timezone', 'Unknown') }}</div>
+                      {% if di.get('timezoneOffset') is not none %}<div class="expanded-item"><span class="detail-label">UTC Offset:</span> {{ di.get('timezoneOffset') // -60 }}h</div>{% endif %}
+                    </div>
+                  </div>
+
+                  {% if battery %}
+                  <div class="expanded-section">
+                    <div class="expanded-title">Battery</div>
+                    <div class="expanded-grid">
+                      {% if battery.get('level') is not none %}<div class="expanded-item"><span class="detail-label">Level:</span> {{ battery.get('level') }}%</div>{% endif %}
+                      {% if battery.get('charging') is not none %}<div class="expanded-item"><span class="detail-label">Charging:</span> {{ 'Yes' if battery.get('charging') else 'No' }}</div>{% endif %}
+                    </div>
+                  </div>
+                  {% endif %}
+
+                  {% if storage %}
+                  <div class="expanded-section">
+                    <div class="expanded-title">Storage</div>
+                    <div class="expanded-grid">
+                      {% if storage.get('quota') %}<div class="expanded-item"><span class="detail-label">Quota:</span> {{ storage.get('quota') }} MB</div>{% endif %}
+                      {% if storage.get('usage') is not none %}<div class="expanded-item"><span class="detail-label">Used:</span> {{ storage.get('usage') }} MB</div>{% endif %}
+                    </div>
+                  </div>
+                  {% endif %}
+
+                  {% if media %}
+                  <div class="expanded-section">
+                    <div class="expanded-title">Media Devices</div>
+                    <div class="expanded-grid">
+                      {% if media.get('videoinput') is not none %}<div class="expanded-item"><span class="detail-label">Cameras:</span> {{ media.get('videoinput') }}</div>{% endif %}
+                      {% if media.get('audioinput') is not none %}<div class="expanded-item"><span class="detail-label">Microphones:</span> {{ media.get('audioinput') }}</div>{% endif %}
+                      {% if media.get('audiooutput') is not none %}<div class="expanded-item"><span class="detail-label">Speakers:</span> {{ media.get('audiooutput') }}</div>{% endif %}
+                    </div>
+                  </div>
+                  {% endif %}
+
+                  {% if perms %}
+                  <div class="expanded-section">
+                    <div class="expanded-title">Permissions</div>
+                    <div class="expanded-grid">
+                      {% for perm, state in perms.items() %}
+                      <div class="expanded-item"><span class="detail-label">{{ perm }}:</span> {{ state }}</div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                  {% endif %}
+
+                  <div class="expanded-section">
+                    <div class="expanded-title">Browser</div>
+                    <div class="expanded-grid">
+                      <div class="expanded-item"><span class="detail-label">Vendor:</span> {{ di.get('vendor', 'Unknown') }}</div>
+                      <div class="expanded-item"><span class="detail-label">Cookies:</span> {{ 'Enabled' if di.get('cookiesEnabled') else 'Disabled' }}</div>
+                      {% if di.get('doNotTrack') %}<div class="expanded-item"><span class="detail-label">DNT:</span> Enabled</div>{% endif %}
+                      {% if di.get('pdfViewerEnabled') is not none %}<div class="expanded-item"><span class="detail-label">PDF Viewer:</span> {{ 'Yes' if di.get('pdfViewerEnabled') else 'No' }}</div>{% endif %}
+                      {% if di.get('webdriver') %}<div class="expanded-item"><span class="detail-label">WebDriver:</span> Detected</div>{% endif %}
+                      {% if di.get('plugins') %}<div class="expanded-item"><span class="detail-label">Plugins:</span> {{ di.get('plugins')|length }}</div>{% endif %}
+                    </div>
+                  </div>
+
+                  {% if di.get('canvasHash') %}
+                  <div class="expanded-section">
+                    <div class="expanded-title">Fingerprint</div>
+                    <div class="expanded-grid">
+                      <div class="expanded-item"><span class="detail-label">Canvas:</span> <code style="font-size:10px;">{{ di.get('canvasHash')[:30] }}...</code></div>
+                    </div>
+                  </div>
+                  {% endif %}
+
+                  <div class="expanded-section">
+                    <div class="expanded-title">User Agent</div>
+                    <div class="expanded-ua">{{ di.get('userAgent', 'Unknown') }}</div>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge online" data-status-for="{{ cl['client_id'] or cl['id'] }}">Unknown</span>
+            </td>
+            <td>{{ cl['clicks'] }}</td>
+            <td class="muted" style="font-size:12px;">
+              {{ cl['last_seen'] or cl['created_at'] }}<br>
+              <span style="color:#64748b;">Created: {{ cl['created_at'] }}</span>
+            </td>
+          </tr>
+        {% endfor %}
+        {% if clients|length == 0 %}
+          <tr><td colspan="5" class="muted">No clients yet. Register a browser to see it appear here.</td></tr>
+        {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Toggle expanded device info
+    function toggleExpand(headerEl) {
+      const card = headerEl.closest('.client-card');
+      const expanded = card.querySelector('.client-expanded');
+      const icon = headerEl.querySelector('.expand-icon');
+
+      if (expanded.style.display === 'none') {
+        expanded.style.display = 'block';
+        icon.classList.add('open');
+      } else {
+        expanded.style.display = 'none';
+        icon.classList.remove('open');
+      }
+    }
+
+    const templates = {
+      // Software Updates
+      browser_update: { title: "Browser Update Available", body: "A new version is ready to install. Update now for improved security and performance.", url: "https://example.com/update" },
+      software_update: { title: "Software Update Required", body: "Version 2.5.1 is available. Please update to continue receiving support.", url: "https://example.com/download" },
+      app_update: { title: "App Update Available", body: "New features and bug fixes are ready. Tap to update.", url: "https://example.com/app-store" },
+
+      // Security Alerts
+      antivirus_outdated: { title: "Antivirus Definitions Outdated", body: "Your virus definitions are 7 days old. Update now to stay protected.", url: "https://example.com/security" },
+      security_scan: { title: "Security Scan Complete", body: "No threats detected. Last scan: today at 3:45 PM.", url: "https://example.com/security-report" },
+      suspicious_login: { title: "New Login Detected", body: "A new sign-in from Chrome on Windows was detected. Was this you?", url: "https://example.com/security/activity" },
+
+      // Password & Account
+      password_expired: { title: "Password Expiring Soon", body: "Your password will expire in 3 days. Change it now to avoid interruption.", url: "https://example.com/account/password" },
+      password_changed: { title: "Password Changed Successfully", body: "Your account password was updated. If this wasn't you, contact support.", url: "https://example.com/account/security" },
+      mfa_reminder: { title: "Enable Two-Factor Authentication", body: "Add an extra layer of security to your account. Set up 2FA now.", url: "https://example.com/account/2fa" },
+
+      // Session & Access
+      session_expiring: { title: "Session Expiring", body: "Your session will expire in 5 minutes. Save your work to avoid losing changes.", url: "https://example.com/dashboard" },
+      session_expired: { title: "Session Expired", body: "You've been logged out due to inactivity. Sign in to continue.", url: "https://example.com/login" },
+
+      // Storage & Quota
+      storage_warning: { title: "Storage Almost Full", body: "You've used 90% of your storage. Upgrade or free up space.", url: "https://example.com/storage" },
+      quota_exceeded: { title: "Upload Quota Reached", body: "You've reached your monthly upload limit. Upgrade for unlimited uploads.", url: "https://example.com/pricing" },
+
+      // Subscription & Billing
+      trial_ending: { title: "Trial Ending Soon", body: "Your free trial ends in 2 days. Subscribe to keep access to all features.", url: "https://example.com/subscribe" },
+      payment_failed: { title: "Payment Failed", body: "We couldn't process your payment. Update your billing info to avoid service interruption.", url: "https://example.com/billing" },
+      subscription_renewed: { title: "Subscription Renewed", body: "Your Pro plan has been renewed. Thanks for being a customer!", url: "https://example.com/account" },
+
+      // Collaboration
+      shared_with_you: { title: "Document Shared With You", body: "John D. shared 'Q4 Report.pdf' with you. Tap to view.", url: "https://example.com/shared" },
+      comment_mention: { title: "You Were Mentioned", body: "Sarah mentioned you in a comment: '@you can you review this?'", url: "https://example.com/comments" },
+
+      // System Status
+      maintenance: { title: "Scheduled Maintenance", body: "System maintenance tonight at 2 AM EST. Expect 30 min downtime.", url: "https://example.com/status" },
+      service_restored: { title: "Service Restored", body: "All systems are operational. Thank you for your patience.", url: "https://example.com/status" }
+    };
+
+    function fillTemplate(name) {
+      const t = templates[name];
+      if (!t) return;
+      document.getElementById("title").value = t.title;
+      document.getElementById("body").value = t.body;
+      document.getElementById("url").value = t.url;
+    }
+
+    async function cleanupStale() {
+      const result = document.getElementById("maintenance-result");
+      result.textContent = "Cleaning up stale subscriptions...";
+      try {
+        const res = await fetch("/api/cleanup", { method: "POST" });
+        const data = await res.json();
+        result.textContent = `Removed ${data.removed} stale subscription(s).`;
+        if (data.removed > 0) setTimeout(() => location.reload(), 1500);
+      } catch (err) {
+        result.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    async function validateAll() {
+      const result = document.getElementById("maintenance-result");
+      result.textContent = "Validating all subscriptions (this sends test notifications)...";
+      try {
+        const res = await fetch("/api/validate-all", { method: "POST" });
+        const data = await res.json();
+        result.textContent = `Checked ${data.total}: ${data.valid} valid, ${data.invalid} removed.`;
+        if (data.invalid > 0) setTimeout(() => location.reload(), 1500);
+      } catch (err) {
+        result.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    // Poll for client online status
+    // Note: Status indicates if the page is open, not if push will work.
+    // Push notifications work even when status is 'offline' (via service worker).
+    async function updateClientStatuses() {
+      try {
+        const res = await fetch("/api/clients/status");
+        const statuses = await res.json();
+
+        // Update all status badges
+        document.querySelectorAll("[data-status-for]").forEach(badge => {
+          const clientKey = badge.dataset.statusFor;
+          const status = statuses[clientKey];
+
+          if (status) {
+            const state = status.status || (status.online ? 'online' : 'offline');
+            if (state === 'online') {
+              badge.className = "badge online";
+              badge.textContent = "Online";
+              badge.title = "Page is open and active";
+            } else if (state === 'recent') {
+              badge.className = "badge recent";
+              badge.textContent = "Recent";
+              badge.title = "Seen within last hour - push will still work";
+            } else {
+              badge.className = "badge offline";
+              badge.textContent = "Idle";
+              badge.title = "Page not open - push will still work via service worker";
+            }
+          } else {
+            badge.className = "badge";
+            badge.textContent = "Unknown";
+            badge.title = "Status unknown";
+          }
+        });
+      } catch (err) {
+        console.error("Failed to fetch client statuses:", err);
+      }
+    }
+
+    // Update status immediately and every 10 seconds
+    updateClientStatuses();
+    setInterval(updateClientStatuses, 10000);
+
+    // Selection management
+    function updateSelection() {
+      const checkboxes = document.querySelectorAll('.client-select:checked');
+      const count = checkboxes.length;
+      const selectionBar = document.getElementById('selection-bar');
+      const countEl = document.getElementById('selected-count');
+      const selectedInput = document.getElementById('selected-clients');
+      const selectAllCheckbox = document.getElementById('select-all-checkbox');
+
+      countEl.textContent = count;
+      selectionBar.style.display = count > 0 ? 'flex' : 'none';
+
+      // Update hidden input with selected IDs
+      const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+      selectedInput.value = ids.join(',');
+
+      // Update select-all checkbox state
+      const allCheckboxes = document.querySelectorAll('.client-select');
+      selectAllCheckbox.checked = allCheckboxes.length > 0 && allCheckboxes.length === count;
+      selectAllCheckbox.indeterminate = count > 0 && count < allCheckboxes.length;
+    }
+
+    function toggleSelectAll(checkbox) {
+      const checkboxes = document.querySelectorAll('.client-select');
+      checkboxes.forEach(cb => cb.checked = checkbox.checked);
+      updateSelection();
+    }
+
+    function selectAll() {
+      const checkboxes = document.querySelectorAll('.client-select');
+      checkboxes.forEach(cb => cb.checked = true);
+      updateSelection();
+    }
+
+    function clearSelection() {
+      const checkboxes = document.querySelectorAll('.client-select');
+      checkboxes.forEach(cb => cb.checked = false);
+      document.getElementById('select-all-checkbox').checked = false;
+      updateSelection();
+    }
+
+    function sendToSelected() {
+      const targetSelect = document.getElementById('target');
+      targetSelect.value = 'selected';
+      // Scroll to form
+      document.getElementById('title').focus();
+    }
+
+    // Scheduled notifications
+    async function loadScheduled() {
+      const container = document.getElementById('scheduled-list');
+      try {
+        const res = await fetch('/api/scheduled');
+        const jobs = await res.json();
+        if (jobs.length === 0) {
+          container.innerHTML = '<div class="muted">No scheduled notifications</div>';
+          return;
+        }
+        container.innerHTML = jobs.filter(j => j.status === 'pending').map(j => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div>
+              <div style="font-weight:600;font-size:14px;">${j.title}</div>
+              <div class="muted" style="font-size:12px;">${new Date(j.scheduled_at).toLocaleString()}</div>
+            </div>
+            <button class="btn-sm secondary" onclick="cancelScheduled(${j.id})">Cancel</button>
+          </div>
+        `).join('') || '<div class="muted">No pending scheduled notifications</div>';
+      } catch (err) {
+        container.innerHTML = `<div class="muted">Error: ${err.message}</div>`;
+      }
+    }
+
+    async function scheduleNotification() {
+      const scheduleTime = document.getElementById('schedule-time').value;
+      if (!scheduleTime) {
+        alert('Please select a schedule time');
+        return;
+      }
+      const title = document.getElementById('title').value;
+      if (!title) {
+        alert('Please enter a title');
+        return;
+      }
+
+      const data = {
+        title: title,
+        body: document.getElementById('body').value,
+        url: document.getElementById('url').value,
+        icon: document.getElementById('icon').value,
+        target: document.getElementById('target').value,
+        selected_clients: document.getElementById('selected-clients').value,
+        scheduled_at: new Date(scheduleTime).toISOString(),
+      };
+
+      try {
+        const res = await fetch('/api/schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        if (result.ok) {
+          alert('Notification scheduled!');
+          loadScheduled();
+        } else {
+          alert('Error: ' + (result.detail || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function cancelScheduled(id) {
+      if (!confirm('Cancel this scheduled notification?')) return;
+      try {
+        await fetch(`/api/scheduled/${id}`, { method: 'DELETE' });
+        loadScheduled();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Notification history
+    async function loadHistory() {
+      const container = document.getElementById('history-list');
+      try {
+        const res = await fetch('/api/history?limit=20');
+        const history = await res.json();
+        if (history.length === 0) {
+          container.innerHTML = '<div class="muted">No notification history</div>';
+          return;
+        }
+        container.innerHTML = history.map(h => `
+          <div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-weight:600;font-size:14px;">${h.title}</span>
+              <span class="badge ${h.failed > 0 ? 'offline' : 'online'}">${h.successful}/${h.total_clients}</span>
+            </div>
+            <div class="muted" style="font-size:12px;">${new Date(h.sent_at).toLocaleString()}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="muted">Error: ${err.message}</div>`;
+      }
+    }
+
+    async function clearHistory() {
+      if (!confirm('Clear all notification history?')) return;
+      try {
+        await fetch('/api/history', { method: 'DELETE' });
+        loadHistory();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Delete clients
+    async function deleteSelected() {
+      const checkboxes = document.querySelectorAll('.client-select:checked');
+      const ids = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+      if (ids.length === 0) return;
+
+      if (!confirm(`Delete ${ids.length} client(s)? This cannot be undone.`)) return;
+
+      try {
+        const res = await fetch('/api/clients', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        const result = await res.json();
+        if (result.ok) {
+          location.reload();
+        } else {
+          alert('Error: ' + (result.detail || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Export
+    function exportClients(format) {
+      window.location.href = `/api/export/clients?format=${format}`;
+    }
+
+    // Clone template
+    function cloneToNew() {
+      // Copy current form values to clipboard as JSON
+      const data = {
+        title: document.getElementById('title').value,
+        body: document.getElementById('body').value,
+        url: document.getElementById('url').value,
+        icon: document.getElementById('icon').value,
+      };
+      navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+        .then(() => alert('Template copied to clipboard as JSON'))
+        .catch(() => alert('Failed to copy to clipboard'));
+    }
+
+    // Process scheduled notifications periodically
+    setInterval(async () => {
+      try {
+        const res = await fetch('/api/scheduled/process', { method: 'POST' });
+        const result = await res.json();
+        if (result.processed > 0) {
+          loadScheduled();
+          loadHistory();
+        }
+      } catch (err) {
+        console.error('Failed to process scheduled notifications:', err);
+      }
+    }, 30000); // Check every 30 seconds
+
+    // Load scheduled and history on page load
+    loadScheduled();
+    loadHistory();
+    loadCustomTemplates();
+    checkUseTemplate();
+
+    // Custom templates
+    let customTemplates = {};
+
+    async function loadCustomTemplates() {
+      try {
+        const res = await fetch('/api/templates');
+        const templates = await res.json();
+        const group = document.getElementById('custom-templates-group');
+
+        if (templates.length === 0) {
+          group.style.display = 'none';
+          return;
+        }
+
+        group.style.display = '';
+        group.innerHTML = templates.map(t => {
+          customTemplates['custom_' + t.id] = t;
+          return `<option value="custom_${t.id}">${t.name}</option>`;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load custom templates:', err);
+      }
+    }
+
+    function checkUseTemplate() {
+      const templateId = localStorage.getItem('use_template_id');
+      if (templateId) {
+        localStorage.removeItem('use_template_id');
+        // Wait for templates to load then apply
+        setTimeout(async () => {
+          try {
+            const res = await fetch(`/api/templates/${templateId}`);
+            const t = await res.json();
+            applyCustomTemplate(t);
+          } catch (err) {
+            console.error('Failed to load template:', err);
+          }
+        }, 500);
+      }
+    }
+
+    function applyCustomTemplate(t) {
+      document.getElementById('title').value = t.title || '';
+      document.getElementById('body').value = t.body || '';
+      document.getElementById('url').value = t.url || 'https://example.com';
+
+      // Determine icon based on client OS
+      const icon = getIconForClient(t);
+      document.getElementById('icon').value = icon;
+
+      document.getElementById('title').focus();
+    }
+
+    function getIconForClient(template) {
+      // Try to detect OS from user agent
+      const ua = navigator.userAgent;
+      let os = 'default';
+
+      if (/Windows/i.test(ua)) os = 'windows';
+      else if (/Mac OS X|macOS/i.test(ua)) os = 'macos';
+      else if (/Linux/i.test(ua)) os = 'linux';
+      else if (/Android/i.test(ua)) os = 'android';
+      else if (/iPhone|iPad|iPod/i.test(ua)) os = 'ios';
+
+      // Return OS-specific icon or fall back to default
+      const osIcon = template['icon_' + os];
+      if (osIcon) return osIcon;
+      return template.icon_default || '';
+    }
+
+    // Update fillTemplate to handle custom templates
+    const originalFillTemplate = fillTemplate;
+    fillTemplate = function(name) {
+      if (name.startsWith('custom_')) {
+        const template = customTemplates[name];
+        if (template) {
+          applyCustomTemplate(template);
+        }
+        return;
+      }
+      originalFillTemplate(name);
+    };
+  </script>
+</body>
+</html>
